@@ -1,5 +1,6 @@
+// src/app/api/events/[id]/cancel/route.ts
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { getAdminDb } from "@/lib/firebaseAdmin"; // ★ 変更
 import { auth } from "@/auth";
 
 export const runtime = "nodejs";
@@ -33,20 +34,22 @@ async function notifyPromoted(lineUserId: string, title: string) {
 
 export async function POST(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> } // Next.js 15
 ) {
   const session = await auth();
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = await params; // ← await が必須
+  const { id } = await params;
   const uid = session.user.uid;
-  const eventRef = adminDb.collection("events").doc(id);
+
+  const db = getAdminDb(); // ★ ここで初期化
+  const eventRef = db.collection("events").doc(id);
 
   let promotedUserLineId: string | null = null;
   let eventTitle = "";
 
-  await adminDb.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx) => {
     const snap = await tx.get(eventRef);
     if (!snap.exists) throw new Error("not_found");
 
@@ -58,10 +61,10 @@ export async function POST(
     const waitlist = data.waitlist ?? [];
 
     if (participants.length < before.length && waitlist.length > 0) {
-      const [promoted, ...rest] = waitlist; // ← prefer-const 回避
+      const [promoted, ...rest] = waitlist;
       participants.push(promoted);
 
-      const userDoc = await tx.get(adminDb.collection("users").doc(promoted));
+      const userDoc = await tx.get(db.collection("users").doc(promoted));
       const u = userDoc.data() as UserDoc | undefined;
       if (u?.lineUserId) promotedUserLineId = u.lineUserId;
 
