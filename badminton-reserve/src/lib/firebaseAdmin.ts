@@ -1,4 +1,3 @@
-// src/lib/firebaseAdmin.ts
 import { cert, getApps, initializeApp, getApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -17,12 +16,11 @@ export function getAdminDb() {
     );
   }
 
-  const app =
-    getApps().length > 0
-      ? getApp()
-      : initializeApp({
-          credential: cert({ projectId, clientEmail, privateKey }),
-        });
+  const app = getApps().length
+    ? getApp()
+    : initializeApp({
+        credential: cert({ projectId, clientEmail, privateKey }),
+      });
 
   cachedDb = getFirestore(app);
   return cachedDb;
