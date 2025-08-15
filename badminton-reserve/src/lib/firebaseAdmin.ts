@@ -1,27 +1,52 @@
-import { cert, getApps, initializeApp, getApp } from "firebase-admin/app";
+import "server-only";
+import {
+  getApps,
+  initializeApp,
+  cert,
+  type AppOptions,
+} from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-let cachedDb: FirebaseFirestore.Firestore | null = null;
+const svcRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (!svcRaw) {
+  throw new Error(
+    "FIREBASE_SERVICE_ACCOUNT が未設定です。サービスアカウントJSONを1行で入れてください。"
+  );
+}
+
+let svc: any;
+try {
+  svc = JSON.parse(svcRaw);
+} catch {
+  throw new Error(
+    "FIREBASE_SERVICE_ACCOUNT のJSONが不正です。1行JSON（ダブルクォート）で入れてください。"
+  );
+}
+
+if (typeof svc.private_key === "string") {
+  svc.private_key = svc.private_key.replace(/\\n/g, "\n");
+}
+
+const projectId = process.env.FIREBASE_PROJECT_ID || svc.project_id;
+
+if (!projectId) {
+  throw new Error(
+    "projectId が見つかりません。FIREBASE_PROJECT_ID を設定するか、JSON内に project_id を含めてください。"
+  );
+}
+
+// デバッグ用（秘密は出さない）
+if (process.env.NODE_ENV !== "production") {
+  console.log("[firebaseAdmin] using service account for project:", projectId);
+}
+
+const app =
+  getApps()[0] ??
+  initializeApp({
+    credential: cert(svc), // ← 必ず credential を渡す（applicationDefault にしない）
+    projectId,
+  } satisfies AppOptions);
 
 export function getAdminDb() {
-  if (cachedDb) return cachedDb;
-
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "Missing Firebase Admin env: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"
-    );
-  }
-
-  const app = getApps().length
-    ? getApp()
-    : initializeApp({
-        credential: cert({ projectId, clientEmail, privateKey }),
-      });
-
-  cachedDb = getFirestore(app);
-  return cachedDb;
+  return getFirestore(app);
 }
