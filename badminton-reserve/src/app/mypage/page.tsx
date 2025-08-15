@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 type Profile = {
   nickname: string;
-  level: string;
   gender: string;
   message?: string;
   years?: number;
@@ -14,7 +13,6 @@ type Profile = {
 
 const initial: Profile = {
   nickname: "",
-  level: "公式大会3部で入賞2回以上あり",
   gender: "女性",
   message: "",
   years: 0,
@@ -71,21 +69,6 @@ export default function MyPage() {
       </label>
 
       <label className="block">
-        レベル
-        <select
-          className="input"
-          value={form.level}
-          onChange={(e) => setForm({ ...form, level: e.target.value })}
-        >
-          <option>初心者</option>
-          <option>初級</option>
-          <option>中級</option>
-          <option>上級</option>
-          <option>公式大会3部で入賞2回以上あり</option>
-        </select>
-      </label>
-
-      <label className="block">
         性別
         <select
           className="input"
@@ -99,39 +82,12 @@ export default function MyPage() {
       </label>
 
       <label className="block">
-        ザンバドのみんなに一言
-        <textarea
-          className="input"
-          value={form.message}
-          onChange={(e) => setForm({ ...form, message: e.target.value })}
-        />
-      </label>
-
-      <label className="block">
         バドミントン歴
         <input
           type="number"
           className="input"
           value={form.years ?? 0}
           onChange={(e) => setForm({ ...form, years: Number(e.target.value) })}
-        />
-      </label>
-
-      <label className="block">
-        出身地
-        <input
-          className="input"
-          value={form.hometown ?? ""}
-          onChange={(e) => setForm({ ...form, hometown: e.target.value })}
-        />
-      </label>
-
-      <label className="block">
-        バド以外で好きな事・物・人
-        <textarea
-          className="input"
-          value={form.likes ?? ""}
-          onChange={(e) => setForm({ ...form, likes: e.target.value })}
         />
       </label>
 

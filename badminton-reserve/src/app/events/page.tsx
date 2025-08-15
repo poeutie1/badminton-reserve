@@ -10,7 +10,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type UserProfile = { displayName?: string; avatarUrl?: string | null };
+type UserProfile = {
+  displayName?: string; // マイページで設定した表示名（最優先）
+  preferredName?: string; // 互換
+  nickname?: string; // 互換
+  name?: string; // 互換
+  avatarUrl?: string | null;
+};
 
 type EventRow = {
   id: string;
@@ -59,9 +65,21 @@ function maskId(id: string) {
   return id.length > 8 ? `${id.slice(0, 4)}…${id.slice(-2)}` : id;
 }
 
+// プロフィール名の選択優先度（profiles > users > 互換キー）
+function pickName(u?: UserProfile | Record<string, any>) {
+  if (!u) return undefined;
+  return (
+    (u as any).displayName ||
+    (u as any).preferredName ||
+    (u as any).nickname ||
+    (u as any).name ||
+    undefined
+  );
+}
+
 export default async function EventsPage() {
   const session = await auth();
-  // v5: session.user.id（←推奨）。互換のため uid / email / name も最後にフォールバック
+  // v5: session.user.id を優先（互換で uid / email / name にフォールバック）
   const userId =
     (session?.user as any)?.id ||
     (session?.user as any)?.uid ||
@@ -120,10 +138,20 @@ export default async function EventsPage() {
   // 修復は待たずに並行実行（UX優先。失敗してもUIは影響なし）
   Promise.allSettled(toFix).catch(() => {});
 
-  // --- 2) users をまとめて解決（displayName / avatar）---
+  // --- 2) プロフィール情報の解決（profiles があれば最優先 / なければ users）---
   const allIds = Array.from(
     new Set(base.flatMap((e) => [...e.participants, ...e.waitlist]))
   );
+  let profilesMap = new Map<string, any>();
+  if (allIds.length) {
+    // profiles コレクション（任意）
+    const profileRefs = allIds.map((id) => db.collection("profiles").doc(id));
+    const profileSnaps = await db.getAll(...profileRefs);
+    profilesMap = new Map(
+      profileSnaps.map((s) => [s.id, s.exists ? s.data() : {}])
+    );
+  }
+
   const userRefs = allIds.map((id) => db.collection("users").doc(id));
   const userSnaps = allIds.length ? await db.getAll(...userRefs) : [];
   const usersMap = new Map<string, UserProfile>();
@@ -133,16 +161,24 @@ export default async function EventsPage() {
 
   const events: EventRow[] = base.map((e) => ({
     ...e,
-    participantProfiles: e.participants.map((id) => ({
-      id,
-      name: usersMap.get(id)?.displayName || maskId(id),
-      avatarUrl: usersMap.get(id)?.avatarUrl ?? null,
-    })),
-    waitlistProfiles: e.waitlist.map((id) => ({
-      id,
-      name: usersMap.get(id)?.displayName || maskId(id),
-      avatarUrl: usersMap.get(id)?.avatarUrl ?? null,
-    })),
+    participantProfiles: e.participants.map((id) => {
+      const fromProfile = profilesMap.get(id);
+      const fromUser = usersMap.get(id);
+      return {
+        id,
+        name: pickName(fromProfile) || pickName(fromUser) || maskId(id),
+        avatarUrl: fromProfile?.avatarUrl ?? fromUser?.avatarUrl ?? null,
+      };
+    }),
+    waitlistProfiles: e.waitlist.map((id) => {
+      const fromProfile = profilesMap.get(id);
+      const fromUser = usersMap.get(id);
+      return {
+        id,
+        name: pickName(fromProfile) || pickName(fromUser) || maskId(id),
+        avatarUrl: fromProfile?.avatarUrl ?? fromUser?.avatarUrl ?? null,
+      };
+    }),
   }));
 
   // --- 3) 描画 ---
