@@ -47,8 +47,12 @@ export default function MyPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
-    if (res.ok) alert("保存しました");
-    else alert("保存に失敗しました");
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(`保存に失敗しました: ${json.error ?? res.status}`);
+      return;
+    }
+    alert("保存しました");
   };
 
   if (loading) return <div>読み込み中…</div>;

@@ -1,7 +1,7 @@
+// src/app/api/line/callback/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
-export const runtime = "nodejs"; // firebase-admin 使うなら必須
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -9,23 +9,24 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   if (!code)
-    return NextResponse.redirect(new URL("/profile?e=no_code", req.url));
+    return NextResponse.redirect(new URL("/mypage?e=no_code", req.url));
 
-  // TODO: ここでLINEのトークン交換を実施（省略可）
-  // 成功したらセッションID発行（ダミーでOK）
-  const sid = crypto.randomUUID();
+  // TODO: トークン交換（今は省略でOK）
+  const sid = crypto.randomUUID(); // 仮セッションID
 
-  // ★ 本番でも届くCookie属性（Domainは付けない！）
-  (
-    await // ★ 本番でも届くCookie属性（Domainは付けない！）
-    cookies()
-  ).set("sid", sid, {
+  // ★ レスポンスを作ってから cookies を set する
+  const res = NextResponse.redirect(new URL("/mypage", req.url));
+
+  // ★ localhost(http) では secure=false、本番(https)では true
+  const isHttps = url.protocol === "https:";
+
+  res.cookies.set("sid", sid, {
     httpOnly: true,
-    secure: true, // https なので true
-    sameSite: "lax", // リダイレクトでも送られる
+    secure: isHttps, // ← ここがポイント
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
+    // Domain は指定しない（付けるとズレやすい）
   });
-
-  return NextResponse.redirect(new URL("/profile", req.url));
+  return res;
 }
