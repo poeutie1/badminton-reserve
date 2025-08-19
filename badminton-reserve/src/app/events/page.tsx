@@ -3,9 +3,9 @@ import { getAdminDb } from "@/lib/firebaseAdmin";
 import { auth } from "@/auth";
 import JoinCancelButtons from "./_components/JoinCancelButtons";
 import ParticipantsLine from "./_components/ParticipantsLine";
+import PromotionBanner, { type Note } from "./_components/PromotionBanner";
 import WaitlistLine from "./_components/WaitlistLine";
 import { FieldValue, type WriteResult } from "firebase-admin/firestore";
-// NEW: 管理者だけ表示する削除ボタン
 import DeleteEventButton from "./_components/DeleteEventButton";
 
 export const runtime = "nodejs";
@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type UserProfile = {
-  displayName?: string; // マイページで設定した表示名（最優先）
-  preferredName?: string; // 互換
-  nickname?: string; // 互換
-  name?: string; // 互換
+  displayName?: string;
+  preferredName?: string;
+  nickname?: string;
+  name?: string;
   avatarUrl?: string | null;
 };
 
@@ -49,12 +49,10 @@ function normalizeIds(arr: any[]): string[] {
     .filter((x): x is string => typeof x === "string")
     .map((s) => s.trim())
     .filter(Boolean)
-    // ダミー系除去
     .filter((s) => !/^dummy[-_ ]?user$/i.test(s))
     .filter((s) => !/^dummy/i.test(s))
-    // 正規フォーマットのみ（例: line:xxxx / google:xxxx）
     .filter((s) => /^[a-z]+:/.test(s));
-  return Array.from(new Set(cleaned)); // 重複除去
+  return Array.from(new Set(cleaned));
 }
 
 function maskId(id: string) {
@@ -67,7 +65,6 @@ function maskId(id: string) {
   return id.length > 8 ? `${id.slice(0, 4)}…${id.slice(-2)}` : id;
 }
 
-// プロフィール名の選択優先度（profiles > users > 互換キー）
 function pickName(u?: UserProfile | Record<string, any>) {
   if (!u) return undefined;
   return (
@@ -81,7 +78,6 @@ function pickName(u?: UserProfile | Record<string, any>) {
 
 export default async function EventsPage() {
   const session = await auth();
-  // v5: session.user.id を優先（互換で uid / email / name にフォールバック）
   const userId =
     (session?.user as any)?.id ||
     (session?.user as any)?.uid ||
@@ -89,7 +85,6 @@ export default async function EventsPage() {
     session?.user?.name ||
     null;
 
-  // NEW: 管理者判定（ADMIN_UIDS に含まれていれば true / 未設定なら誰でも管理者）
   const ADMIN_UIDS = (process.env.ADMIN_UIDS ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -101,24 +96,20 @@ export default async function EventsPage() {
   const db = getAdminDb();
   const snap = await db.collection("events").orderBy("date").get();
 
-  // --- 1) セルフヒーリング（読み込み時に静かに正規化）---
+  // --- 1) セルフヒーリング ---
   const toFix: Promise<WriteResult>[] = [];
-
   const base = snap.docs.map((d) => {
     const data = d.data() as any;
-
     const rawParticipants: string[] = data.participants ?? [];
     const rawWaitlist: string[] = data.waitlist ?? [];
-
     const p = normalizeIds(rawParticipants);
     const w0 = normalizeIds(rawWaitlist);
-    const w = w0.filter((id) => !p.includes(id)); // 参加と重複するIDは待機から除外
+    const w = w0.filter((id) => !p.includes(id));
 
     if (
       p.length !== rawParticipants.length ||
       w.length !== rawWaitlist.length
     ) {
-      // 差分があるときだけバックグラウンドで修復
       toFix.push(
         d.ref.update({
           participants: p,
@@ -145,24 +136,20 @@ export default async function EventsPage() {
       full: p.length >= capacity,
     };
   });
-
-  // 修復は待たずに並行実行（UX優先。失敗してもUIは影響なし）
   Promise.allSettled(toFix).catch(() => {});
 
-  // --- 2) プロフィール情報の解決（profiles があれば最優先 / なければ users）---
+  // --- 2) プロフィール解決 ---
   const allIds = Array.from(
     new Set(base.flatMap((e) => [...e.participants, ...e.waitlist]))
   );
   let profilesMap = new Map<string, any>();
   if (allIds.length) {
-    // profiles コレクション（任意）
     const profileRefs = allIds.map((id) => db.collection("profiles").doc(id));
     const profileSnaps = await db.getAll(...profileRefs);
     profilesMap = new Map(
       profileSnaps.map((s) => [s.id, s.exists ? s.data() : {}])
     );
   }
-
   const userRefs = allIds.map((id) => db.collection("users").doc(id));
   const userSnaps = allIds.length ? await db.getAll(...userRefs) : [];
   const usersMap = new Map<string, UserProfile>();
@@ -192,9 +179,35 @@ export default async function EventsPage() {
     }),
   }));
 
-  // --- 3) 描画 ---
+  // --- 2.5) 未読通知を取得（ここが移動ポイント） ---
+  let notes: Note[] = [];
+  if (userId) {
+    const snapN = await db
+      .collection("users")
+      .doc(userId)
+      .collection("notifications")
+      .where("read", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(5)
+      .get();
+
+    notes = snapN.docs.map((d) => {
+      const x = d.data() as any;
+      return {
+        id: d.id,
+        title: x.title ?? "",
+        whenText: x.whenText ?? "",
+        url: x.url ?? "/events",
+      };
+    });
+  }
+
+  // --- 3) 描画（単一の return に統一） ---
   return (
     <div className="space-y-3 p-4">
+      {/* 未読通知バナーを先頭に表示 */}
+      <PromotionBanner notes={notes} />
+
       {events.map((ev) => {
         const filled = `${ev.participants.length}/${ev.capacity}`;
         const when = ev.date.toLocaleString("ja-JP", {
@@ -203,11 +216,10 @@ export default async function EventsPage() {
 
         return (
           <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
-            {/* NEW: タイトル行の右側に削除ボタン（管理者のみ表示） */}
-            {/* 新：タイトルだけを1行目に */}
+            {/* タイトル */}
             <div className="font-semibold">{ev.title}</div>
 
-            {/* 新：日付行の右端に削除ボタン */}
+            {/* 日付行の右端に削除ボタン（管理者のみ） */}
             <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
               <div>
                 {when}
@@ -216,9 +228,12 @@ export default async function EventsPage() {
               {isAdmin && (
                 <DeleteEventButton id={ev.id} title={ev.title} compact />
               )}
-
-              {/* ←ここに移動 */}
             </div>
+
+            {ev.location && (
+              <div className="text-sm text-gray-500">📍 {ev.location}</div>
+            )}
+
             {/* 参加者 */}
             <ParticipantsLine
               people={ev.participantProfiles}

@@ -1,14 +1,18 @@
-// src/lib/user.ts
 import { auth } from "@/auth";
+
+type SessionUserLite = {
+  id?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
 
 export async function requireUserId() {
   const session = await auth();
-  if (!session) throw new Error("Unauthorized");
-  const uid = (session.user as any)?.id; // ← ここだけを見る
-  if (!uid) throw new Error("No user id");
+  const u = (session?.user ?? {}) as SessionUserLite;
+  if (!u.id) throw new Error("Unauthorized");
   return {
-    userId: uid,
-    displayName: session.user?.name ?? "",
-    avatarUrl: (session.user as any)?.image ?? null,
+    userId: u.id,
+    displayName: u.name ?? "",
+    avatarUrl: u.image ?? null,
   };
 }
