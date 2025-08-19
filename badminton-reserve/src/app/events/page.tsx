@@ -5,6 +5,8 @@ import JoinCancelButtons from "./_components/JoinCancelButtons";
 import ParticipantsLine from "./_components/ParticipantsLine";
 import WaitlistLine from "./_components/WaitlistLine";
 import { FieldValue, type WriteResult } from "firebase-admin/firestore";
+// NEW: 管理者だけ表示する削除ボタン
+import DeleteEventButton from "./_components/DeleteEventButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +88,15 @@ export default async function EventsPage() {
     session?.user?.email ||
     session?.user?.name ||
     null;
+
+  // NEW: 管理者判定（ADMIN_UIDS に含まれていれば true / 未設定なら誰でも管理者）
+  const ADMIN_UIDS = (process.env.ADMIN_UIDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const isAdmin =
+    !!userId &&
+    (ADMIN_UIDS.length === 0 || ADMIN_UIDS.includes(String(userId)));
 
   const db = getAdminDb();
   const snap = await db.collection("events").orderBy("date").get();
@@ -192,15 +203,22 @@ export default async function EventsPage() {
 
         return (
           <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
+            {/* NEW: タイトル行の右側に削除ボタン（管理者のみ表示） */}
+            {/* 新：タイトルだけを1行目に */}
             <div className="font-semibold">{ev.title}</div>
-            <div className="text-sm text-gray-500">
-              {when}
-              {ev.time ? `・${ev.time}` : ""}・{filled}
-            </div>
-            {ev.location && (
-              <div className="text-sm text-gray-500">📍 {ev.location}</div>
-            )}
 
+            {/* 新：日付行の右端に削除ボタン */}
+            <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
+              <div>
+                {when}
+                {ev.time ? `・${ev.time}` : ""}・{filled}
+              </div>
+              {isAdmin && (
+                <DeleteEventButton id={ev.id} title={ev.title} compact />
+              )}
+
+              {/* ←ここに移動 */}
+            </div>
             {/* 参加者 */}
             <ParticipantsLine
               people={ev.participantProfiles}
