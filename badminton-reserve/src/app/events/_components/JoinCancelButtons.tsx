@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-export default function JoinCancelButtons({
+export default function CancelButtons({
   id,
   joined,
   inWaitlist,
