@@ -1,12 +1,43 @@
-// src/auth.ts
 import NextAuth from "next-auth";
 import Line from "next-auth/providers/line";
+
+/** ---------- type augmentations (no any) ---------- */
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id?: string; // "line:xxxxxxxx"
+      uid?: string; // 互換（必要なら）
+      lineUserId?: string | null; // raw LINE id
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+declare module "next-auth" {
+  interface JWT {
+    uid?: string; // "line:xxxxxxxx"
+    lineUserId?: string; // raw LINE id
+    name?: string;
+    picture?: string;
+  }
+}
+/** ------------------------------------------------- */
 
 type LineProfile = {
   sub?: string;
   userId?: string;
   name?: string;
   picture?: string;
+};
+
+const isString = (v: unknown): v is string => typeof v === "string";
+const pickStr = (obj: unknown, key: keyof LineProfile): string | undefined => {
+  if (obj && typeof obj === "object") {
+    const v = (obj as Record<string, unknown>)[key as string];
+    return isString(v) ? v : undefined;
+  }
+  return undefined;
 };
 
 export const {
@@ -20,62 +51,48 @@ export const {
     }),
   ],
   session: { strategy: "jwt" },
-  secret: process.env.NEXTAUTH_SECRET,
+  /** v5 では AUTH_* 推奨。両対応にしておく */
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   callbacks: {
     async jwt({ token, profile, account }) {
-      if (
-        account?.provider === "line" &&
-        profile &&
-        typeof profile === "object"
-      ) {
-        const p = profile as Partial<LineProfile>;
+      // 初回サインイン時に一意IDを確定
+      const lineSub =
+        pickStr(profile, "sub") ??
+        pickStr(profile, "userId") ??
+        (isString(account?.providerAccountId)
+          ? account?.providerAccountId
+          : undefined) ??
+        (isString(token.sub) ? token.sub : undefined);
 
-        // LINE の一意ID（sub or userId）
-        const sub =
-          p.sub ??
-          p.userId ??
-          account.providerAccountId ??
-          token.sub ??
-          undefined;
-
-        if (sub) {
-          // 統一ID（プレフィクス付き）
-          token.uid = `line:${sub}`;
-          // raw の LINE ユーザーIDも保持（session で使う）
-          token.lineUserId = sub;
-        }
-
-        if (p.name) token.name = p.name;
-        if (p.picture) token.picture = p.picture;
+      if (lineSub) {
+        if (!token.uid) token.uid = `line:${lineSub}`;
+        if (!token.lineUserId) token.lineUserId = lineSub;
       }
+
+      const name = pickStr(profile, "name");
+      const picture = pickStr(profile, "picture");
+      if (name) token.name = name;
+      if (picture) token.picture = picture;
+
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user) {
-        // 互換用: 従来の uid（= token.sub を踏襲）
-        session.user.uid = typeof token.sub === "string" ? token.sub : "";
+      if (!session.user) return session;
 
-        // raw の LINE ユーザーIDを優先して保存。無ければ uid から復元
-        const rawLineId =
-          (typeof token.lineUserId === "string"
-            ? token.lineUserId
-            : undefined) ??
-          (typeof token.uid === "string" && token.uid.startsWith("line:")
-            ? token.uid.slice(5)
-            : undefined);
+      const uid = isString(token.uid) ? token.uid : undefined;
+      const rawLineId =
+        (isString(token.lineUserId) ? token.lineUserId : undefined) ??
+        (uid && uid.startsWith("line:") ? uid.slice(5) : undefined);
 
-        session.user.lineUserId = rawLineId ?? null;
+      if (uid) session.user.id = uid;
+      session.user.uid = isString(token.sub) ? token.sub : "";
+      session.user.lineUserId = rawLineId ?? null;
 
-        // アプリ全体の主ID（ある時だけセット）→ id は optional
-        const uid = typeof token.uid === "string" ? token.uid : undefined;
-        const mainId = uid ?? (rawLineId ? `line:${rawLineId}` : undefined);
-        if (mainId) session.user.id = mainId;
+      if (isString(token.picture)) session.user.image = token.picture;
+      if (isString(token.name)) session.user.name = token.name;
 
-        if (typeof token.picture === "string")
-          session.user.image = token.picture;
-        if (typeof token.name === "string") session.user.name = token.name;
-      }
       return session;
     },
   },

@@ -1,14 +1,11 @@
-// src/app/api/me/upsert/route.ts
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
-import { requireUserId } from "@/lib/user";
 import { FieldValue } from "firebase-admin/firestore";
 import { auth } from "@/auth";
 
 export const runtime = "nodejs";
-
-type SessionUser = { lineUserId?: string | null } | null;
-type SessionLike = { user?: SessionUser } | null;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type UserDoc = {
   displayName?: string;
@@ -17,29 +14,51 @@ type UserDoc = {
   lastSeenAt?: unknown;
 };
 
+const isNonEmpty = (v: unknown): v is string =>
+  typeof v === "string" && v.length > 0;
+
 export async function POST() {
-  const { userId, displayName, avatarUrl } = await requireUserId();
-  const session = (await auth()) as SessionLike;
-  const lineUserId: string | null = session?.user?.lineUserId ?? null;
+  const session = await auth();
+  const user = session?.user;
 
-  const db = getAdminDb();
-  const ref = db.collection("users").doc(userId);
-  const snap = await ref.get();
-  const cur: Partial<UserDoc> = snap.exists
-    ? (snap.data() as UserDoc) ?? {}
-    : {};
+  const userId = isNonEmpty(user?.id) ? user!.id : undefined;
+  const displayName = isNonEmpty(user?.name ?? undefined) ? user!.name! : "";
+  const avatarUrl = isNonEmpty(user?.image ?? undefined) ? user!.image! : null;
+  const lineUserId = user?.lineUserId ?? null;
 
-  const update: Partial<UserDoc> & { lastSeenAt: FieldValue } = {
-    lastSeenAt: FieldValue.serverTimestamp(),
-  };
-  if (!cur.displayName) update.displayName = displayName || "";
-  if (!cur.avatarUrl && avatarUrl) update.avatarUrl = avatarUrl;
-  if (!cur.lineUserId && lineUserId) update.lineUserId = lineUserId;
-
-  // lastSeenAt 以外に何か更新がある場合のみ書き込む
-  if (Object.keys(update).length > 1) {
-    await ref.set(update, { merge: true });
+  // 未ログインは 401（例外を投げずに返す）
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  try {
+    const db = getAdminDb();
+    const ref = db.collection("users").doc(userId);
+    const snap = await ref.get();
+    const cur: Partial<UserDoc> = snap.exists
+      ? (snap.data() as UserDoc) ?? {}
+      : {};
+
+    const update: Partial<UserDoc> & { lastSeenAt: FieldValue } = {
+      lastSeenAt: FieldValue.serverTimestamp(),
+    };
+    if (!cur.displayName && isNonEmpty(displayName))
+      update.displayName = displayName;
+    if (!cur.avatarUrl && avatarUrl) update.avatarUrl = avatarUrl;
+    if (!cur.lineUserId && lineUserId) update.lineUserId = lineUserId;
+
+    if (Object.keys(update).length > 1) {
+      await ref.set(update, { merge: true });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    // e は unknown のまま扱う
+    const msg = e instanceof Error ? e.message : "unknown error";
+    console.error("[api/me/upsert] failed:", msg);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
