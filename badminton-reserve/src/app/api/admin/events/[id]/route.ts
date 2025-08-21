@@ -5,28 +5,32 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 
-const ADMIN_UIDS = (process.env.ADMIN_UIDS ?? "")
+/* ===== Admin gate ===== */
+const ADMIN_UIDS: string[] = (process.env.ADMIN_UIDS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-function pickUid(session: any) {
-  return (
-    session?.user?.id || // v5 推奨
-    (session?.user as any)?.uid || // 互換
-    session?.user?.email || // メールログインならこれ
-    session?.user?.name || // 最後の保険
-    null
-  );
+/* ===== Types ===== */
+type SessionUser = {
+  id?: string;
+  uid?: string;
+  email?: string | null;
+  name?: string | null;
+};
+type SessionLike = { user?: SessionUser | null } | null;
+type RouteContext = { params: Promise<{ id: string }> };
+
+/* ===== Helpers ===== */
+function pickUid(session: SessionLike): string | null {
+  const u = session?.user;
+  return u?.id ?? u?.uid ?? u?.email ?? u?.name ?? null;
 }
 
-export async function DELETE(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: Request, ctx: RouteContext) {
   const { id } = await ctx.params;
 
-  const session = await auth();
+  const session = (await auth()) as SessionLike;
   const uid = pickUid(session);
 
   const allowByUid =
@@ -53,7 +57,11 @@ export async function DELETE(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // 必要なら「作成者のみ削除可」にするならここで snap.data().createdBy === uid をチェック
+  // 作成者制限を付けたい場合はここで:
+  // const createdBy = (snap.data() as { createdBy?: string | null })?.createdBy ?? null;
+  // if (createdBy && createdBy !== uid) {
+  //   return NextResponse.json({ error: "forbidden_owner" }, { status: 403 });
+  // }
 
   await ref.delete();
   return NextResponse.json({ ok: true });

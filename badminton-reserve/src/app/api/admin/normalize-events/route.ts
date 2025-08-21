@@ -1,27 +1,41 @@
+// (例) src/app/api/admin/events/normalize/route.ts
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 
-const ADMIN_KEY = process.env.ADMIN_KEY;
+const ADMIN_KEY: string | undefined = process.env.ADMIN_KEY;
 
-function isValidId(x: any): x is string {
+function isValidId(x: unknown): x is string {
   return typeof x === "string" && /^[a-z]+:/.test(x.trim());
 }
 
-function normalizeList(arr: any[]): string[] {
+function normalizeList(arr: unknown[] | undefined): string[] {
   const cleaned = (arr ?? [])
-    .filter((x) => typeof x === "string")
-    .map((s: string) => s.trim())
+    .filter((x): x is string => typeof x === "string")
+    .map((s) => s.trim())
     .filter((s) => s.length > 0)
     // よくあるダミー候補を除外
     .filter((s) => !/^dummy[-_ ]?user$/i.test(s))
     .filter((s) => !/^dummy/i.test(s))
     .filter(isValidId);
 
-  // 重複除去
-  return Array.from(new Set(cleaned));
+  return Array.from(new Set(cleaned)); // 重複除去
 }
+
+type EventDoc = {
+  participants?: unknown[];
+  waitlist?: unknown[];
+};
+
+type ReportRow = {
+  id: string;
+  beforeP: number;
+  afterP: number;
+  beforeW: number;
+  afterW: number;
+  removed: number;
+};
 
 export async function POST(req: Request) {
   if (!ADMIN_KEY) {
@@ -36,25 +50,19 @@ export async function POST(req: Request) {
   const snap = await db.collection("events").get();
 
   let touched = 0;
-  const report: Array<{
-    id: string;
-    beforeP: number;
-    afterP: number;
-    beforeW: number;
-    afterW: number;
-    removed: number;
-  }> = [];
+  const report: ReportRow[] = [];
 
   await Promise.all(
     snap.docs.map(async (d) => {
-      const data = d.data() as any;
+      const data = d.data() as EventDoc;
+
       const beforeP = Array.isArray(data.participants)
         ? data.participants.length
         : 0;
       const beforeW = Array.isArray(data.waitlist) ? data.waitlist.length : 0;
 
-      const participants = normalizeList(data.participants ?? []);
-      const waitlist = normalizeList(data.waitlist ?? []);
+      const participants = normalizeList(data.participants);
+      const waitlist = normalizeList(data.waitlist);
 
       // 参加者と待機者に同じIDがいたら、参加者を優先
       const pSet = new Set(participants);

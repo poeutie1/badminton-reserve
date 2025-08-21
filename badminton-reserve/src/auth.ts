@@ -1,6 +1,13 @@
+// src/auth.ts
 import NextAuth from "next-auth";
 import Line from "next-auth/providers/line";
-import type { JWT } from "next-auth/jwt";
+
+type LineProfile = {
+  sub?: string;
+  userId?: string;
+  name?: string;
+  picture?: string;
+};
 
 export const {
   auth,
@@ -21,13 +28,9 @@ export const {
         profile &&
         typeof profile === "object"
       ) {
+        const p = profile as Partial<LineProfile>;
+
         // LINE の一意ID（sub or userId）
-        const p = profile as {
-          sub?: string;
-          userId?: string;
-          name?: string;
-          picture?: string;
-        };
         const sub =
           p.sub ??
           p.userId ??
@@ -35,32 +38,43 @@ export const {
           token.sub ??
           undefined;
 
-        // ここで “公式の uid = provider:subject” を作る
-        if (sub) (token as any).uid = `line:${sub}`;
+        if (sub) {
+          // 統一ID（プレフィクス付き）
+          token.uid = `line:${sub}`;
+          // raw の LINE ユーザーIDも保持（session で使う）
+          token.lineUserId = sub;
+        }
 
-        // 表示名・アイコンも残しておく（あれば）
         if (p.name) token.name = p.name;
-        if (p.picture) (token as any).picture = p.picture;
+        if (p.picture) token.picture = p.picture;
       }
-      return token as JWT;
+      return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
-        // 互換のため従来フィールドも維持
-        (session.user as any).uid = (token.sub ?? "") as string;
-        (session.user as any).lineUserId = (token as any).lineUserId ?? null;
+        // 互換用: 従来の uid（= token.sub を踏襲）
+        session.user.uid = typeof token.sub === "string" ? token.sub : "";
 
-        // ★ここが肝：アプリ全体で使うIDを session.user.id に統一
-        (session.user as any).id =
-          (token as any).uid ??
-          ((token as any).lineUserId
-            ? `line:${(token as any).lineUserId}`
+        // raw の LINE ユーザーIDを優先して保存。無ければ uid から復元
+        const rawLineId =
+          (typeof token.lineUserId === "string"
+            ? token.lineUserId
+            : undefined) ??
+          (typeof token.uid === "string" && token.uid.startsWith("line:")
+            ? token.uid.slice(5)
             : undefined);
 
-        // 表示名・画像もセッションに載せておく（Profile同期で使う）
-        if ((token as any).picture)
-          (session.user as any).image = (token as any).picture;
-        if (token.name) session.user.name = token.name;
+        session.user.lineUserId = rawLineId ?? null;
+
+        // アプリ全体の主ID（ある時だけセット）→ id は optional
+        const uid = typeof token.uid === "string" ? token.uid : undefined;
+        const mainId = uid ?? (rawLineId ? `line:${rawLineId}` : undefined);
+        if (mainId) session.user.id = mainId;
+
+        if (typeof token.picture === "string")
+          session.user.image = token.picture;
+        if (typeof token.name === "string") session.user.name = token.name;
       }
       return session;
     },

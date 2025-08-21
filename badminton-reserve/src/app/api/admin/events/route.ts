@@ -5,25 +5,56 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 
-const ADMIN_UIDS = (process.env.ADMIN_UIDS ?? "")
+/* ===== Admin gate ===== */
+const ADMIN_UIDS: string[] = (process.env.ADMIN_UIDS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const ADMIN_KEY = (process.env.ADMIN_KEY ?? "").trim(); // 旧x-admin-key方式も併用可
+const ADMIN_KEY: string = (process.env.ADMIN_KEY ?? "").trim(); // 旧x-admin-key方式も併用可
 
-function pickUid(session: any) {
-  return (
-    session?.user?.id || // v5 推奨
-    (session?.user as any)?.uid || // 互換
-    session?.user?.email || // メールログインならこれ
-    session?.user?.name || // 最後の保険
-    null
-  );
+/* ===== Types ===== */
+type SessionUser = {
+  id?: string;
+  uid?: string;
+  email?: string | null;
+  name?: string | null;
+};
+type SessionLike = { user?: SessionUser | null } | null;
+
+type EventCreateBody = {
+  title?: unknown;
+  capacity?: unknown;
+  date?: unknown; // "YYYY-MM-DDTHH:mm"（<input type="datetime-local">想定）
+  location?: unknown; // optional
+  time?: unknown; // optional (e.g. "19:00-21:00")
+};
+
+type EventPayload = {
+  title: string;
+  date: Date;
+  capacity: number;
+  participants: string[];
+  waitlist: string[];
+  createdAt: Date;
+  createdBy: string | null;
+  location?: string;
+  time?: string;
+};
+
+/* ===== Helpers ===== */
+function pickUid(session: SessionLike): string | null {
+  const u = session?.user;
+  return u?.id ?? u?.uid ?? u?.email ?? u?.name ?? null;
+}
+
+function parseBody(json: unknown): EventCreateBody {
+  if (typeof json !== "object" || json === null) return {};
+  return json as EventCreateBody;
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
+  const session = (await auth()) as SessionLike;
   const uid = pickUid(session);
   const headerKey = req.headers.get("x-admin-key")?.trim();
 
@@ -48,18 +79,26 @@ export async function POST(req: Request) {
   }
 
   // ---- 入力の読み取り＆検証 ----
-  let body: any = {};
+  let raw: unknown;
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
+  const body = parseBody(raw);
 
-  const title = String(body.title ?? "").trim();
-  const capacity = Number(body.capacity);
-  const dtLocal = String(body.date ?? "").trim(); // "YYYY-MM-DDTHH:mm"（datetime-local想定）
-  const locationRaw = body.location != null ? String(body.location) : "";
-  const timeRaw = body.time != null ? String(body.time) : "";
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const capacity =
+    typeof body.capacity === "number"
+      ? body.capacity
+      : Number.isFinite(Number(body.capacity))
+      ? Number(body.capacity)
+      : NaN;
+  const dtLocal = typeof body.date === "string" ? body.date.trim() : "";
+
+  const location =
+    typeof body.location === "string" ? body.location.trim() : "";
+  const time = typeof body.time === "string" ? body.time.trim() : "";
 
   if (!title || !dtLocal || Number.isNaN(capacity)) {
     return NextResponse.json(
@@ -71,12 +110,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // ---- ローカル日時 → UTC補正して保存（Firestore Timestamp）----
-  const local = new Date(dtLocal);
-  const date = new Date(local.getTime() - local.getTimezoneOffset() * 60000);
+  // ---- ローカル日時 → UTC補正して保存（Firestore Timestampに適したDate）----
+  // <input type="datetime-local"> はタイムゾーン情報を含まない → ローカル時刻として解釈される
+  const local = new Date(dtLocal); // local time
+  const date = new Date(local.getTime() - local.getTimezoneOffset() * 60000); // UTCに揃える
 
   // ---- Firestore へ保存：未入力は入れない（undefined を避ける）----
-  const payload: Record<string, any> = {
+  const payload: EventPayload = {
     title,
     date,
     capacity,
@@ -84,13 +124,9 @@ export async function POST(req: Request) {
     waitlist: [],
     createdAt: new Date(),
     createdBy: uid,
+    ...(location ? { location } : {}),
+    ...(time ? { time } : {}),
   };
-
-  const location = locationRaw.trim();
-  if (location) payload.location = location;
-
-  const time = timeRaw.trim();
-  if (time) payload.time = time;
 
   const db = getAdminDb();
   const doc = await db.collection("events").add(payload);
