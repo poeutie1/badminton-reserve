@@ -1,135 +1,66 @@
-// src/app/api/admin/events/route.ts
-export const runtime = "nodejs"; // Admin SDK を使うので nodejs 固定
+export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebaseAdmin";
+import { isAdmin } from "@/lib/admin";
 
-/* ===== Admin gate ===== */
-const ADMIN_UIDS: string[] = (process.env.ADMIN_UIDS ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const ADMIN_KEY: string = (process.env.ADMIN_KEY ?? "").trim(); // 旧x-admin-key方式も併用可
-
-/* ===== Types ===== */
-type SessionUser = {
-  id?: string;
-  uid?: string;
-  email?: string | null;
-  name?: string | null;
-};
-type SessionLike = { user?: SessionUser | null } | null;
-
-type EventCreateBody = {
+type Body = {
   title?: unknown;
   capacity?: unknown;
-  date?: unknown; // "YYYY-MM-DDTHH:mm"（<input type="datetime-local">想定）
-  location?: unknown; // optional
-  time?: unknown; // optional (e.g. "19:00-21:00")
+  date?: unknown; // "YYYY-MM-DDTHH:mm"
+  location?: unknown;
+  time?: unknown;
 };
-
-type EventPayload = {
-  title: string;
-  date: Date;
-  capacity: number;
-  participants: string[];
-  waitlist: string[];
-  createdAt: Date;
-  createdBy: string | null;
-  location?: string;
-  time?: string;
-};
-
-/* ===== Helpers ===== */
-function pickUid(session: SessionLike): string | null {
-  const u = session?.user;
-  return u?.id ?? u?.uid ?? u?.email ?? u?.name ?? null;
-}
-
-function parseBody(json: unknown): EventCreateBody {
-  if (typeof json !== "object" || json === null) return {};
-  return json as EventCreateBody;
-}
 
 export async function POST(req: Request) {
-  const session = (await auth()) as SessionLike;
-  const uid = pickUid(session);
-  const headerKey = req.headers.get("x-admin-key")?.trim();
+  const session = await auth();
+  const u = session?.user;
 
-  const allowByUid =
-    !!uid && (ADMIN_UIDS.length === 0 || ADMIN_UIDS.includes(String(uid)));
-  const allowByKey = !!ADMIN_KEY && ADMIN_KEY === (headerKey ?? "");
-
-  if (!allowByUid && !allowByKey) {
-    return NextResponse.json(
-      {
-        error: "forbidden",
-        debug: {
-          signedIn: !!session,
-          uid,
-          allowByUid,
-          allowByKey,
-          ADMIN_UIDS_count: ADMIN_UIDS.length,
-        },
-      },
-      { status: session ? 403 : 401 }
-    );
+  // ★ ここで強制
+  if (!u || !isAdmin(u.id, u.lineUserId ?? null)) {
+    return NextResponse.json({ error: "forbidden" }, { status: u ? 403 : 401 });
   }
 
-  // ---- 入力の読み取り＆検証 ----
+  // 入力
   let raw: unknown;
   try {
     raw = await req.json();
   } catch {
     return NextResponse.json({ error: "bad json" }, { status: 400 });
   }
-  const body = parseBody(raw);
+  const b = raw as Body;
 
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  const capacity =
-    typeof body.capacity === "number"
-      ? body.capacity
-      : Number.isFinite(Number(body.capacity))
-      ? Number(body.capacity)
+  const title = typeof b.title === "string" ? b.title.trim() : "";
+  const cap =
+    typeof b.capacity === "number"
+      ? b.capacity
+      : Number.isFinite(Number(b.capacity))
+      ? Number(b.capacity)
       : NaN;
-  const dtLocal = typeof body.date === "string" ? body.date.trim() : "";
+  const dtLocal = typeof b.date === "string" ? b.date.trim() : "";
+  const location = typeof b.location === "string" ? b.location.trim() : "";
+  const time = typeof b.time === "string" ? b.time.trim() : "";
 
-  const location =
-    typeof body.location === "string" ? body.location.trim() : "";
-  const time = typeof body.time === "string" ? body.time.trim() : "";
-
-  if (!title || !dtLocal || Number.isNaN(capacity)) {
-    return NextResponse.json(
-      {
-        error: "bad request",
-        debug: { title, dtLocal, capacity: body.capacity },
-      },
-      { status: 400 }
-    );
+  if (!title || !dtLocal || Number.isNaN(cap)) {
+    return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
-  // ---- ローカル日時 → UTC補正して保存（Firestore Timestampに適したDate）----
-  // <input type="datetime-local"> はタイムゾーン情報を含まない → ローカル時刻として解釈される
-  const local = new Date(dtLocal); // local time
-  const date = new Date(local.getTime() - local.getTimezoneOffset() * 60000); // UTCに揃える
+  // datetime-local はローカル時刻。Date にするとUTCエポックは正しく入るのでそのままでOK
+  const date = new Date(dtLocal);
 
-  // ---- Firestore へ保存：未入力は入れない（undefined を避ける）----
-  const payload: EventPayload = {
+  const db = getAdminDb();
+  const ref = await db.collection("events").add({
     title,
     date,
-    capacity,
+    capacity: cap,
     participants: [],
     waitlist: [],
     createdAt: new Date(),
-    createdBy: uid,
+    createdBy: u.id ?? null,
     ...(location ? { location } : {}),
     ...(time ? { time } : {}),
-  };
+  });
 
-  const db = getAdminDb();
-  const doc = await db.collection("events").add(payload);
-
-  return NextResponse.json({ ok: true, id: doc.id });
+  return NextResponse.json({ ok: true, id: ref.id }, { status: 201 });
 }

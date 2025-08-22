@@ -1,4 +1,5 @@
 // src/app/events/page.tsx
+export type Gender = "男性" | "女性" | "未回答";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { auth } from "@/auth";
 import JoinCancelButtons from "./_components/JoinCancelButtons";
@@ -18,6 +19,8 @@ type UserProfile = {
   preferredName?: string;
   nickname?: string;
   name?: string;
+  gender?: Gender;
+  years?: number;
   avatarUrl?: string | null;
 };
 
@@ -81,7 +84,10 @@ function maskId(id: string) {
 }
 
 type Nameish = Partial<
-  Pick<UserProfile, "displayName" | "preferredName" | "nickname" | "name">
+  Pick<
+    UserProfile,
+    "displayName" | "preferredName" | "nickname" | "name" | "years" | "gender"
+  >
 >;
 
 function pickName(u?: Nameish): string | undefined {
@@ -199,23 +205,41 @@ export default async function EventsPage() {
     });
   }
 
+  const labelWithMeta = (
+    name: string,
+    gender?: Gender | null,
+    years?: number
+  ) => {
+    const tags: string[] = [];
+    if (gender && gender !== "未回答") tags.push(gender);
+    if (typeof years === "number") tags.push(`${years}年`);
+    return tags.length ? `${name}（${tags.join("・")}）` : name;
+  };
   const events: EventRow[] = base.map((e) => ({
     ...e,
     participantProfiles: e.participants.map((id) => {
       const fromProfile = profilesMap.get(id);
       const fromUser = usersMap.get(id);
+      const baseName =
+        pickName(fromProfile) ?? pickName(fromUser) ?? maskId(id);
+      const gender = fromProfile?.gender ?? fromUser?.gender ?? null;
+      const years = fromProfile?.years ?? fromUser?.years;
       return {
         id,
-        name: pickName(fromProfile) ?? pickName(fromUser) ?? maskId(id),
+        name: labelWithMeta(baseName, gender, years),
         avatarUrl: fromProfile?.avatarUrl ?? fromUser?.avatarUrl ?? null,
       };
     }),
     waitlistProfiles: e.waitlist.map((id) => {
       const fromProfile = profilesMap.get(id);
       const fromUser = usersMap.get(id);
+      const baseName =
+        pickName(fromProfile) ?? pickName(fromUser) ?? maskId(id);
+      const gender = fromProfile?.gender ?? fromUser?.gender ?? null;
+      const years = fromProfile?.years ?? fromUser?.years;
       return {
         id,
-        name: pickName(fromProfile) ?? pickName(fromUser) ?? maskId(id),
+        name: labelWithMeta(baseName, gender, years),
         avatarUrl: fromProfile?.avatarUrl ?? fromUser?.avatarUrl ?? null,
       };
     }),
@@ -228,7 +252,7 @@ export default async function EventsPage() {
       .collection("users")
       .doc(userId)
       .collection("notifications")
-      .where("read", "==", false)
+      .where("isRead", "==", false)
       .orderBy("createdAt", "desc")
       .limit(5)
       .get();

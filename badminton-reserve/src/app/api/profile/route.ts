@@ -1,4 +1,5 @@
 // src/app/api/profile/route.ts
+export type Gender = "男性" | "女性" | "未回答";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebaseAdmin";
@@ -23,6 +24,8 @@ type ProfileDoc = {
   preferredName?: string;
   nickname?: string;
   name?: string;
+  gende?: Gender;
+  years?: number;
   avatarUrl?: string | null;
   // 任意の拡張フィールド
   [k: string]: unknown;

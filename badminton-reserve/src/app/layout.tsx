@@ -29,9 +29,6 @@ export default function RootLayout({
               <li>
                 <Link href="/admin">管理者用ページ</Link>
               </li>
-              <li>
-                <Link href="/youtube">YouTubeリンク</Link>
-              </li>
               <li className="ml-auto">
                 <Link href="/api/auth/signin">ログイン</Link>
               </li>
