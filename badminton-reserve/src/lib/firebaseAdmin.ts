@@ -55,7 +55,7 @@ if (process.env.NODE_ENV !== "production") {
   console.log("[firebaseAdmin] using service account for project:", projectId);
 }
 
-const app =
+export const app =
   getApps()[0] ??
   initializeApp({
     credential: cert(serviceAccount),

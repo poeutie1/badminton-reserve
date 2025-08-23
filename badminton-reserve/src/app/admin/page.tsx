@@ -3,7 +3,11 @@
 import { useState } from "react";
 
 export default function AdminPage() {
-  const [form, setForm] = useState({ title: "", date: "", capacity: 12 });
+  const [form, setForm] = useState({
+    title: "豊島区立明豊中学校18:50~22:00",
+    date: "",
+    capacity: 21,
+  });
   const create = async () => {
     await fetch("/api/admin/events", {
       method: "POST",
@@ -22,7 +26,7 @@ export default function AdminPage() {
       />
       <input
         className="input"
-        type="datetime-local"
+        type="date"
         value={form.date}
         onChange={(e) => setForm({ ...form, date: e.target.value })}
       />

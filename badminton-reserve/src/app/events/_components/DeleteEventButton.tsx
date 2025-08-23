@@ -1,6 +1,6 @@
-// src/app/events/_components/DeleteEventButton.tsx
 "use client";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function DeleteEventButton({
   id,
@@ -8,26 +8,34 @@ export default function DeleteEventButton({
   compact = false,
 }: {
   id: string;
-  title: string;
+  title?: string;
   compact?: boolean;
 }) {
   const router = useRouter();
-  const onDelete = async () => {
-    if (!confirm(`「${title}」を削除します。よろしいですか？`)) return;
-    const res = await fetch(`/api/admin/events/${id}`, { method: "DELETE" });
+  const [busy, setBusy] = useState(false);
+
+  const onClick = async () => {
+    if (!confirm(`「${title ?? id}」を削除します。よろしいですか？`)) return;
+    setBusy(true);
+    const res = await fetch(`/api/admin/events/${id}/delete`, {
+      method: "POST",
+    });
+    setBusy(false);
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      alert(`削除失敗: ${res.status} ${j.error ?? ""}`);
+      alert(j?.error ?? "削除に失敗しました（権限）");
       return;
     }
     router.refresh();
   };
+
   const cls = compact
-    ? "px-2 py-0.5 rounded border border-red-300 text-red-600 text-xs hover:bg-red-50"
-    : "px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50";
+    ? "text-red-600 text-xs underline disabled:opacity-50"
+    : "px-3 py-1 rounded border border-red-500 text-red-600 disabled:opacity-50";
+
   return (
-    <button onClick={onDelete} className={cls}>
-      削除
+    <button onClick={onClick} disabled={busy} className={cls}>
+      {busy ? "削除中…" : "削除"}
     </button>
   );
 }

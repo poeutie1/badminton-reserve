@@ -41,10 +41,11 @@ type FlexMessage = {
 };
 type FlexArgs = { title: string; when: string; url: string };
 
+// 本文には URL を出さない。タイトル＝会場名を表示する
 function buildPromotionFlex(a: FlexArgs): FlexMessage {
   return {
     type: "flex",
-    altText: "繰り上がり通知",
+    altText: `繰り上がり通知: ${a.title}`,
     contents: {
       type: "bubble",
       body: {
@@ -62,13 +63,34 @@ function buildPromotionFlex(a: FlexArgs): FlexMessage {
             layout: "baseline",
             margin: "md",
             contents: [
+              { type: "text", text: "会場", size: "sm", color: "#999999" },
+              {
+                type: "text",
+                text: a.title,
+                size: "sm",
+                margin: "md",
+                wrap: true,
+              },
+            ],
+          },
+          {
+            type: "box",
+            layout: "baseline",
+            margin: "sm",
+            contents: [
               { type: "text", text: "開催日時", size: "sm", color: "#999999" },
-              { type: "text", text: a.when, size: "sm", margin: "md" },
+              {
+                type: "text",
+                text: a.when || "未設定",
+                size: "sm",
+                margin: "md",
+                wrap: true,
+              },
             ],
           },
           {
             type: "text",
-            text: "キャンセルが出たため、キャンセル待ちを参加に繰り上げました。ご参加フォームからイベント内容をご確認ください。",
+            text: "キャンセルが出たため、キャンセル待ちを参加に繰り上げました。ボタンからイベント詳細をご確認ください。",
             wrap: true,
             size: "sm",
             margin: "md",

@@ -141,7 +141,7 @@ export async function pushPromotedMessage(args: {
     return pushLine(u, [
       {
         type: "text",
-        text: `キャンセル待ち繰り上げ\n「${args.title}」\n${args.whenLabel}\n${args.eventUrl}`,
+        text: `キャンセル待ち繰り上げ\n「${args.title}」\n${args.whenLabel}`,
       },
     ]);
   }

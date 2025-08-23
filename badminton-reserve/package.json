@@ -8,11 +8,22 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "firebase-admin/*": ["node_modules/firebase-admin/*"] },
+    "skipLibCheck": true
+  },
+  "packageManager": "pnpm@8.15.4",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",
     "firebase": "^12.1.0",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^5.1.1",
+    "jose": "^6.0.13",
     "next": "15.4.6",
     "next-auth": "^5.0.0-beta.29",
     "react": "19.1.0",

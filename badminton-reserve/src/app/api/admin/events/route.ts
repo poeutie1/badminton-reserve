@@ -1,3 +1,4 @@
+// src/app/api/admin/events/create/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -8,21 +9,19 @@ import { isAdmin } from "@/lib/admin";
 type Body = {
   title?: unknown;
   capacity?: unknown;
-  date?: unknown; // "YYYY-MM-DDTHH:mm"
+  date?: unknown; // "YYYY-MM-DDTHH:mm"（開始）
   location?: unknown;
-  time?: unknown;
+  endTime?: unknown; // "HH:mm"（任意・同日想定）
+  durMin?: unknown; // 数字（任意・終了までの分）
 };
 
 export async function POST(req: Request) {
   const session = await auth();
   const u = session?.user;
-
-  // ★ ここで強制
   if (!u || !isAdmin(u.id, u.lineUserId ?? null)) {
     return NextResponse.json({ error: "forbidden" }, { status: u ? 403 : 401 });
   }
 
-  // 入力
   let raw: unknown;
   try {
     raw = await req.json();
@@ -40,26 +39,25 @@ export async function POST(req: Request) {
       : NaN;
   const dtLocal = typeof b.date === "string" ? b.date.trim() : "";
   const location = typeof b.location === "string" ? b.location.trim() : "";
-  const time = typeof b.time === "string" ? b.time.trim() : "";
 
   if (!title || !dtLocal || Number.isNaN(cap)) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
-  // datetime-local はローカル時刻。Date にするとUTCエポックは正しく入るのでそのままでOK
-  const date = new Date(dtLocal);
+  // 開始（ローカルの datetime-local をそのまま Date に）
+  const start = new Date(dtLocal);
 
   const db = getAdminDb();
   const ref = await db.collection("events").add({
     title,
-    date,
+    // 互換のため両方保存
+    date: start, // 既存コード用
     capacity: cap,
     participants: [],
     waitlist: [],
     createdAt: new Date(),
     createdBy: u.id ?? null,
-    ...(location ? { location } : {}),
-    ...(time ? { time } : {}),
+    ...(location ? { location, place: location } : {}),
   });
 
   return NextResponse.json({ ok: true, id: ref.id }, { status: 201 });

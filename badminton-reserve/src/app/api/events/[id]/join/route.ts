@@ -2,16 +2,11 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { requireUserId } from "@/lib/user";
+import * as admin from "firebase-admin"; // ← 型をここから取る
 
 export const runtime = "nodejs";
 
 /* ========= Types & Helpers ========= */
-
-type EventDoc = {
-  capacity?: number;
-  participants?: unknown[]; // string[] 想定
-  waitlist?: unknown[]; // string[] 想定
-};
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -37,15 +32,16 @@ export async function POST(_req: Request, ctx: RouteContext) {
   const db = getAdminDb();
   const ref = db.collection("events").doc(id);
 
-  await db.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx: admin.firestore.Transaction) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new Error("not found");
 
-    const data = snap.data() as EventDoc;
-    const capacity = typeof data.capacity === "number" ? data.capacity : 0;
+    // snap.data() は DocumentData | undefined
+    const raw = snap.data();
+    const capacity = typeof raw?.capacity === "number" ? raw.capacity : 0;
 
-    const participants = toStringArray(data.participants);
-    const waitlist = toStringArray(data.waitlist);
+    const participants = toStringArray(raw?.participants);
+    const waitlist = toStringArray(raw?.waitlist);
 
     // すでにどちらかにいるなら何もしない
     if (participants.includes(userId) || waitlist.includes(userId)) return;
