@@ -12,6 +12,7 @@ export default function AdminPage() {
     await fetch("/api/admin/events", {
       method: "POST",
       body: JSON.stringify(form),
+      credentials: "include",
     });
     alert("作成しました");
   };

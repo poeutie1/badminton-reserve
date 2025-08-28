@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { auth } from "@/auth";
+import { isAdminByUid } from "@/lib/isAdmin";
 import { getAdminDb } from "@/lib/firebaseAdmin";
+
 import JoinCancelButtons from "@/app/events/_components/JoinCancelButtons";
 import ParticipantsLine from "@/app/events/_components/ParticipantsLine";
 import PromotionBanner, {
@@ -12,8 +14,13 @@ import PromotionBanner, {
 } from "@/app/events/_components/PromotionBanner";
 import WaitlistLine from "@/app/events/_components/WaitlistLine";
 import DeleteEventButton from "@/app/events/_components/DeleteEventButton";
-import { FieldValue, type WriteResult } from "firebase-admin/firestore";
-import { verifyAdminFromCookie } from "@/lib/adminAuth";
+
+import { FieldValue } from "firebase-admin/firestore";
+import type {
+  WriteResult,
+  QueryDocumentSnapshot,
+  DocumentSnapshot,
+} from "firebase-admin/firestore";
 
 /* ========= Types ========= */
 export type Gender = "男性" | "女性" | "未回答";
@@ -76,6 +83,17 @@ function normalizeIds(arr: unknown[] | undefined): string[] {
   return Array.from(new Set(cleaned));
 }
 
+function fmtJstDate(d: Date) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "日付未設定";
+  return d.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+}
+
 function maskId(id: string) {
   if (id.includes("@")) {
     const [u, d] = id.split("@");
@@ -101,7 +119,6 @@ function hasToDate(x: unknown): x is { toDate: () => Date } {
   const maybe = x as { toDate?: unknown };
   return typeof maybe.toDate === "function";
 }
-
 function toDate(v: unknown): Date {
   if (v instanceof Date) return v;
   if (hasToDate(v)) return v.toDate();
@@ -125,7 +142,7 @@ function monthRangeJST(year: number, month: number) {
 type Props = { params: Promise<{ year: string; month: string }> };
 
 export default async function EventsPage({ params }: Props) {
-  const { year: yStr, month: mStr } = await params; // ← await 必須
+  const { year: yStr, month: mStr } = await params;
   const year = Number(yStr);
   const month = Number(mStr);
   if (
@@ -138,29 +155,20 @@ export default async function EventsPage({ params }: Props) {
   }
 
   const session = await auth();
-  const su =
-    (session?.user as
-      | { id?: string; uid?: string; email?: string; name?: string }
-      | undefined) ?? undefined;
-  const userId: string | null =
-    su?.id ?? su?.uid ?? su?.email ?? su?.name ?? null;
+  const uid = (session?.user as { id?: string | null } | undefined)?.id ?? null;
+  const isAdmin = isAdminByUid(uid);
 
-  const ADMIN_UIDS_RAW = (process.env.ADMIN_UIDS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const norm = (s: string) => s.replace(/^line:/, "");
-  const ADMIN_UIDS = new Set(ADMIN_UIDS_RAW.map(norm));
-  const uid = String(userId ?? "");
-  const isAdminByUid =
-    !!uid && (ADMIN_UIDS.size === 0 || ADMIN_UIDS.has(norm(uid)));
-  const isAdminByCookie = await verifyAdminFromCookie(); // ← adminToken を検証
-  const isAdmin = isAdminByUid || isAdminByCookie;
+  const userId: string | null =
+    (
+      session?.user as
+        | { id?: string; uid?: string; email?: string; name?: string }
+        | undefined
+    )?.id ?? null;
 
   const db = getAdminDb();
   const { start, end } = monthRangeJST(year, month);
 
-  // 月内のイベントのみ取得（date フィールド基準）
+  // 月内のイベントのみ取得
   const snap = await db
     .collection("events")
     .where("date", ">=", start)
@@ -168,17 +176,8 @@ export default async function EventsPage({ params }: Props) {
     .orderBy("date")
     .get();
 
-  console.log(
-    "isAdmin uid/cookie =",
-    isAdminByUid,
-    isAdminByCookie,
-    "userId=",
-    userId
-  );
-
   // --- 1) セルフヒーリング ---
   const toFix: Promise<WriteResult>[] = [];
-  // base を明示的に型付け（これで map の e も型推論される）
   type BaseRow = {
     id: string;
     title: string;
@@ -192,21 +191,22 @@ export default async function EventsPage({ params }: Props) {
     inWaitlist: boolean;
     full: boolean;
   };
-  const base: BaseRow[] = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
-    const raw = d.data(); // FirebaseFirestore.DocumentData
-    // フィールドごとに型ガードして EventDoc 相当へ落とし込む
+
+  const base: BaseRow[] = snap.docs.map((d: QueryDocumentSnapshot) => {
+    const raw = d.data() as Record<string, unknown>;
+
     const data: EventDoc = {
       title: typeof raw.title === "string" ? raw.title : undefined,
       date: raw.date,
-      // endAt を使っているなら拾う（無ければそのまま undefined）
-      // @ts-expect-error: 型は unknown だが toDate() で後段変換するため unknown 許容
-      endAt: raw.endAt,
       capacity: typeof raw.capacity === "number" ? raw.capacity : undefined,
-      participants: Array.isArray(raw.participants) ? raw.participants : [],
-      waitlist: Array.isArray(raw.waitlist) ? raw.waitlist : [],
+      participants: Array.isArray(raw.participants)
+        ? (raw.participants as unknown[])
+        : [],
+      waitlist: Array.isArray(raw.waitlist) ? (raw.waitlist as unknown[]) : [],
       location: typeof raw.location === "string" ? raw.location : undefined,
       time: typeof raw.time === "string" ? raw.time : undefined,
     };
+
     const rawParticipants = Array.isArray(data.participants)
       ? data.participants
       : [];
@@ -255,11 +255,12 @@ export default async function EventsPage({ params }: Props) {
   const allIds = Array.from(
     new Set(base.flatMap((e) => [...e.participants, ...e.waitlist]))
   );
+
   const profilesMap = new Map<string, ProfileDoc>();
   if (allIds.length) {
     const refs = allIds.map((id) => db.collection("profiles").doc(id));
     const snaps = await db.getAll(...refs);
-    snaps.forEach((s: FirebaseFirestore.DocumentSnapshot) =>
+    snaps.forEach((s: DocumentSnapshot) =>
       profilesMap.set(s.id, s.exists ? (s.data() as ProfileDoc) : {})
     );
   }
@@ -268,7 +269,7 @@ export default async function EventsPage({ params }: Props) {
   if (allIds.length) {
     const refs = allIds.map((id) => db.collection("users").doc(id));
     const snaps = await db.getAll(...refs);
-    snaps.forEach((s: FirebaseFirestore.DocumentSnapshot) =>
+    snaps.forEach((s: DocumentSnapshot) =>
       usersMap.set(s.id, s.exists ? (s.data() as UserProfile) : {})
     );
   }
@@ -326,7 +327,7 @@ export default async function EventsPage({ params }: Props) {
       .limit(5)
       .get();
 
-    notes = snapN.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
+    notes = snapN.docs.map((d: QueryDocumentSnapshot) => {
       const x = d.data() as Partial<Note>;
       return {
         id: d.id,
@@ -337,73 +338,80 @@ export default async function EventsPage({ params }: Props) {
     });
   }
 
-  // --- 3) 描画（参加者/待機者/ボタンはトグルで開閉） ---
+  // --- 3) 描画 ---
   return (
     <div className="space-y-3 p-4">
+      {/* デバッグ用（必要なくなったら削除OK） */}
+      <div
+        data-build={process.env.VERCEL_GIT_COMMIT_SHA ?? "local"}
+        data-admin={JSON.stringify({ admin: isAdmin, uid })}
+        className="hidden"
+      />
+
       <PromotionBanner notes={notes} />
 
-      {events.map((ev) => {
-        return (
-          <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
-            <div className="font-semibold">{ev.title}</div>
+      {events.map((ev) => (
+        <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
+          <div className="font-semibold">{ev.title}</div>
+          <div className="font-semibold">{fmtJstDate(ev.date)}</div>
 
-            <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
-              {isAdmin && (
-                <DeleteEventButton id={ev.id} title={ev.title} compact />
-              )}
-            </div>
-
-            {ev.location && (
-              <div className="text-sm text-gray-500">📍 {ev.location}</div>
+          <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
+            {isAdmin && (
+              <span className="text-xs text-red-500">[admin mode]</span>
             )}
+            {isAdmin && (
+              <DeleteEventButton id={ev.id} title={ev.title} compact />
+            )}
+          </div>
 
-            {/* ▼▼ ここからトグル ▼▼ */}
-            <details className="mt-3 group" open={ev.joined || ev.inWaitlist}>
-              <summary className="cursor-pointer select-none text-sm text-gray-600 flex items-center gap-2">
-                <span className="group-open:hidden">▼参加者一覧</span>
-                <span className="hidden group-open:inline">閉じる</span>
-                <span className="text-gray-500">
-                  （参加: {ev.participants.length}/定員: {ev.capacity}
-                  {ev.waitlistProfiles.length
-                    ? `・待機 ${ev.waitlistProfiles.length}`
-                    : ""}
-                  ）
-                </span>
-              </summary>
+          {ev.location && (
+            <div className="text-sm text-gray-500">📍 {ev.location}</div>
+          )}
 
-              <div className="mt-2 border-t pt-2 space-y-2">
-                <ParticipantsLine
-                  people={ev.participantProfiles}
+          <details className="mt-3 group" open={ev.joined || ev.inWaitlist}>
+            <summary className="cursor-pointer select-none text-sm text-gray-600 flex items-center gap-2">
+              <span className="group-open:hidden">▼参加者一覧</span>
+              <span className="hidden group-open:inline">閉じる</span>
+              <span className="text-gray-500">
+                （参加: {ev.participants.length}/定員: {ev.capacity}
+                {ev.waitlistProfiles.length
+                  ? `・待機 ${ev.waitlistProfiles.length}`
+                  : ""}
+                ）
+              </span>
+            </summary>
+
+            <div className="mt-2 border-t pt-2 space-y-2">
+              <ParticipantsLine
+                people={ev.participantProfiles}
+                me={userId ?? undefined}
+              />
+
+              {ev.waitlistProfiles.length > 0 && (
+                <WaitlistLine
+                  people={ev.waitlistProfiles}
                   me={userId ?? undefined}
                 />
+              )}
 
-                {ev.waitlistProfiles.length > 0 && (
-                  <WaitlistLine
-                    people={ev.waitlistProfiles}
-                    me={userId ?? undefined}
-                  />
+              <div className="mt-2">
+                <JoinCancelButtons
+                  id={ev.id}
+                  joined={ev.joined}
+                  inWaitlist={ev.inWaitlist}
+                  full={ev.full}
+                  disabled={!userId}
+                />
+                {!userId && (
+                  <div className="mt-1 text-xs text-red-500">
+                    ログインすると参加できます
+                  </div>
                 )}
-
-                <div className="mt-2">
-                  <JoinCancelButtons
-                    id={ev.id}
-                    joined={ev.joined}
-                    inWaitlist={ev.inWaitlist}
-                    full={ev.full}
-                    disabled={!userId}
-                  />
-                  {!userId && (
-                    <div className="mt-1 text-xs text-red-500">
-                      ログインすると参加できます
-                    </div>
-                  )}
-                </div>
               </div>
-            </details>
-            {/* ▲▲ トグルここまで ▲▲ */}
-          </div>
-        );
-      })}
+            </div>
+          </details>
+        </div>
+      ))}
     </div>
   );
 }

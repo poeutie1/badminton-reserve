@@ -10,8 +10,9 @@ export default function AdminLoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
-    const res = await fetch("/api/admin/login", {
+    const res = await fetch("", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
     });

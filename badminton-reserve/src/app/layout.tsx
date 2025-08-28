@@ -30,7 +30,7 @@ export default function RootLayout({
                 <Link href="/admin">管理者用ページ</Link>
               </li>
               <li className="ml-auto">
-                <Link href="/api/auth/signin">ログイン</Link>
+                <Link href="/login">ログイン</Link>
               </li>
             </ul>
           </nav>

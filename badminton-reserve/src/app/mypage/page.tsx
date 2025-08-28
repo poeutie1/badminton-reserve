@@ -44,6 +44,7 @@ export default function MyPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
+      credentials: "include",
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {

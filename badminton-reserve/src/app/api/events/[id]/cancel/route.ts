@@ -26,6 +26,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 function hasToDate(x: unknown): x is { toDate: () => Date } {
   return typeof x === "object" && x !== null && "toDate" in (x as object);
 }
+
 function toDate(v: unknown): Date {
   if (v instanceof Date) return v;
   if (hasToDate(v)) return v.toDate();
@@ -45,7 +46,7 @@ function normalizeLineTo(s?: string | null): string | null {
 
 /* ========= Route ========= */
 
-export async function POST(_req: Request, ctx: RouteContext) {
+export async function DELETE(_req: Request, ctx: RouteContext) {
   const { id } = await ctx.params;
   const { userId } = await requireUserId();
 

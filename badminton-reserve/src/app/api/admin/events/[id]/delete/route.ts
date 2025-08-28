@@ -1,54 +1,43 @@
 // src/app/api/admin/events/[id]/delete/route.ts
-export const runtime = "nodejs";
-
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { verifyAdminFromCookie } from "@/lib/adminAuth";
+import { isAdminByUid } from "@/lib/isAdmin";
 import { auth } from "@/auth";
-import { isAdmin } from "@/lib/admin";
 
-type RouteCtx = { params: Promise<{ id: string }> };
+export const runtime = "nodejs";
 
-export async function POST(req: Request, ctx: RouteCtx) {
-  // ✅ params は Promise。必ず await して取り出す
+type Ctx = { params: Promise<{ id: string }> };
+
+async function doDelete(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
 
-  // 管理者チェック（Cookie or UID のどちらかでOK）
+  // 権限チェック（UID or adminCookie）
+  const session = await auth();
+  const uid = (session?.user as { id?: string | null } | undefined)?.id ?? null;
+  const okUid = isAdminByUid(uid);
   const okCookie = await verifyAdminFromCookie();
-  let okUid = false;
-  try {
-    const session = await auth();
-    const u = session?.user as
-      | { id?: string | null; lineUserId?: string | null }
-      | undefined;
-    okUid = !!u && isAdmin(u?.id ?? undefined, u?.lineUserId ?? null);
-  } catch {
-    okUid = false;
-  }
-  if (!okCookie && !okUid) {
+
+  if (!okUid && !okCookie) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // 簡易CSRF（同一オリジンのみ）
-  const origin = req.headers.get("origin");
-  const self = new URL(req.url).origin;
-  if (origin && origin !== self) {
-    return NextResponse.json({ error: "bad origin" }, { status: 400 });
-  }
-
-  // 削除（サブコレクション participants も掃除）
   const db = getAdminDb();
-  const docRef = db.collection("events").doc(id);
+  const ref = db.collection("events").doc(id);
 
-  const partSnap = await docRef.collection("participants").get();
-  if (!partSnap.empty) {
-    const batch = db.batch();
-    partSnap.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) =>
-      batch.delete(d.ref)
-    );
-    await batch.commit();
-  }
+  // participants サブコレクション掃除 → 本体削除
+  const partSnap = await ref.collection("participants").get();
+  const batch = db.batch();
+  partSnap.forEach((d) => batch.delete(d.ref));
+  batch.delete(ref);
+  await batch.commit();
 
-  await docRef.delete();
   return NextResponse.json({ ok: true });
+}
+
+export async function POST(req: Request, ctx: Ctx) {
+  return doDelete(req, ctx);
+}
+export async function DELETE(req: Request, ctx: Ctx) {
+  return doDelete(req, ctx);
 }

@@ -1,21 +1,14 @@
-// src/middleware.ts
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+// middleware.ts
+import { NextResponse } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  const session = await auth();
-
-  // すでにログイン済みならそのまま
-  if (session) return NextResponse.next();
-
-  // 未ログイン → サインインへ（元URLに戻るための callbackUrl を付与）
-  const url = new URL("/api/auth/signin", req.url);
-  const back = req.nextUrl.pathname + req.nextUrl.search;
-  url.searchParams.set("callbackUrl", back);
-  return NextResponse.redirect(url);
+export function middleware(req: Request) {
+  const url = new URL(req.url);
+  if (url.pathname.startsWith("/api/admin/")) {
+    return NextResponse.next(); // ★ APIは通す（ここ重要）
+  }
+  return NextResponse.next(); // ページ保護は必要ならここで
 }
 
-// ログイン必須にしたいパスだけ列挙
 export const config = {
-  matcher: ["/", "/events/:path*", "/mypage/:path*", "/admin/:path*"],
+  matcher: ["/admin/:path*"], // ★APIパスは含めない
 };

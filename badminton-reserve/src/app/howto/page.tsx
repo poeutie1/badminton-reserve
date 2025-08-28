@@ -7,7 +7,7 @@ export default function HowToUsePage() {
         <h2 className="text-xl font-semibold mb-2">練習会への参加方法</h2>
         <ol className="list-decimal list-inside space-y-1">
           <li>
-            マイページで練習イベント一覧にて表示される情報を入力してください。ニックネームを設定していない際にはLINEに登録してある名前が反映されます。
+            マイページで練習イベント一覧にて表示される情報を入力してください。
           </li>
           <li>
             トップページの練習日程から、参加したい練習日を選び、参加者一覧を選択します。
