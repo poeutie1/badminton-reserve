@@ -46,7 +46,7 @@ function normalizeLineTo(s?: string | null): string | null {
 
 /* ========= Route ========= */
 
-export async function DELETE(_req: Request, ctx: RouteContext) {
+export async function POST(_req: Request, ctx: RouteContext) {
   const { id } = await ctx.params;
   const { userId } = await requireUserId();
 
