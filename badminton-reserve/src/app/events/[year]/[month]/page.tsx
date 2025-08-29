@@ -385,12 +385,14 @@ export default async function EventsPage({ params }: Props) {
               <ParticipantsLine
                 people={ev.participantProfiles}
                 me={userId ?? undefined}
+                adminEventId={isAdmin ? ev.id : undefined} // ★ 追加
               />
 
               {ev.waitlistProfiles.length > 0 && (
                 <WaitlistLine
                   people={ev.waitlistProfiles}
                   me={userId ?? undefined}
+                  adminEventId={isAdmin ? ev.id : undefined} // ★ 追加
                 />
               )}
 

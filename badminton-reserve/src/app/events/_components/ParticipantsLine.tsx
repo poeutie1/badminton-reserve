@@ -1,40 +1,50 @@
-// src/app/events/_components/ParticipantsLine.tsx
+// 先頭に
 "use client";
+
+import AdminKickButton from "./AdminKickButton";
+
+type Person = { id: string; name: string; avatarUrl?: string | null };
 
 export default function ParticipantsLine({
   people,
   me,
+  adminEventId,
 }: {
-  people: Array<{ id: string; name: string; avatarUrl?: string | null }>;
+  people: Person[];
   me?: string;
+  adminEventId?: string;
 }) {
-  const maxShow = 5;
-  const show = people.slice(0, maxShow);
-  const rest = people.length - show.length;
-
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-gray-500">参加者:</span>
-      {show.map((p) => (
+    <div className="flex flex-wrap gap-2">
+      {people.map((p) => (
         <span
           key={p.id}
-          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"
-          title={p.id}
+          className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-sm"
         >
-          {/* アバターがあれば */}
-          {p.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.avatarUrl} alt="" className="h-4 w-4 rounded-full" />
-          ) : (
-            <span className="h-4 w-4 rounded-full bg-gray-200 inline-block" />
+          {/* アバター（あれば）。shrink-0 を付ける */}
+          {p.avatarUrl && (
+            <img
+              src={p.avatarUrl}
+              alt=""
+              className="h-6 w-6 rounded-full object-cover shrink-0"
+            />
           )}
-          <span>
+          <span className="whitespace-nowrap">
             {p.name}
-            {me && p.id === me ? "（あなた）" : ""}
+            {me === p.id ? "（自分）" : ""}
           </span>
+
+          {/* 管理者ボタン */}
+          {adminEventId && (
+            <AdminKickButton
+              eventId={adminEventId}
+              targetUserId={p.id}
+              promote={true}
+              title="参加者から外します"
+            />
+          )}
         </span>
       ))}
-      {rest > 0 && <span className="text-gray-500">+{rest}</span>}
     </div>
   );
 }
