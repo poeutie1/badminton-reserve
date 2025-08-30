@@ -4,22 +4,38 @@ import { getAdminDb } from "@/lib/firebaseAdmin";
 import { requireUserId } from "@/lib/user";
 import { FieldValue } from "firebase-admin/firestore";
 import { pushPromotedMessage } from "@/lib/line";
+import { isAdminByUid } from "@/lib/isAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/* ========= Config / Types ========= */
-const ADMIN_UIDS = (process.env.ADMIN_UIDS ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+/* ========= Admin 判定 ========= */
+// 環境変数のUIDは "line:Uxxxx" でも "Uxxxx" でもOKにする
+const stripProvider = (s?: string | null) =>
+  !s ? "" : s.replace(/^[a-z]+:/i, "");
 
-type UserDoc = {
-  lineUserId?: string | null;
-};
+const ADMIN_UIDS_SET = new Set(
+  (process.env.ADMIN_UIDS ?? "")
+    .split(",")
+    .map((s) => stripProvider(s.trim()))
+    .filter(Boolean)
+);
 
-function isAdmin(uid?: string | null) {
-  return !!uid && ADMIN_UIDS.includes(uid);
+type RoleDoc = { role?: string; isAdmin?: boolean };
+
+async function assertAdmin(uid?: string | null): Promise<boolean> {
+  if (!uid) return false;
+  // 1) UIと同じ判定
+  if (isAdminByUid(uid)) return true;
+  // 2) 環境変数（表記ゆれ吸収）
+  if (ADMIN_UIDS_SET.has(stripProvider(uid))) return true;
+  // 3) Firestoreの役割
+  const db = getAdminDb();
+  const snap = await db.collection("users").doc(uid).get();
+  const d: RoleDoc | undefined = snap.exists
+    ? (snap.data() as RoleDoc)
+    : undefined;
+  return d?.role === "admin" || d?.isAdmin === true;
 }
 
 /* ========= Utils ========= */
@@ -42,26 +58,24 @@ function normalizeLineTo(s?: string | null): string | null {
   if (!s) return null;
   return s.startsWith("line:") ? s.slice(5) : s;
 }
-// /api/events/[id]/admin/cancel から id を抜く（ctx を使わない）
+// /api/events/[id]/admin/cancel から id を取得（ctx なしでOK）
 function getEventIdFromRequest(req: Request): string | null {
-  try {
-    const pathname = new URL(req.url).pathname;
-    const m = pathname.match(/\/api\/events\/([^/]+)\/admin\/cancel\/?$/);
-    return m ? decodeURIComponent(m[1]!) : null;
-  } catch {
-    return null;
-  }
+  const pathname = new URL(req.url).pathname;
+  const m = pathname.match(/\/api\/events\/([^/]+)\/admin\/cancel\/?$/);
+  return m ? decodeURIComponent(m[1]!) : null;
 }
+
+/* ========= Types ========= */
+type UserDoc = { lineUserId?: string | null };
 
 /* ========= Core ========= */
 async function handleAdminCancel(eventId: string, req: Request) {
-  // 権限
   const { userId: me } = await requireUserId();
-  if (!isAdmin(me)) {
+  if (!(await assertAdmin(me))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // 入力（unknown から安全に取り出す）
+  // 入力（安全に取り出す）
   let target = "";
   let promote = true;
   let notify = true;
@@ -76,7 +90,7 @@ async function handleAdminCancel(eventId: string, req: Request) {
       if (typeof o.reason === "string") reason = o.reason;
     }
   } catch {
-    /* no body → 既定値のまま */
+    /* no body */
   }
   if (!target) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -93,7 +107,7 @@ async function handleAdminCancel(eventId: string, req: Request) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const eventUrl = `${baseUrl}/events#${eventId}`;
 
-  // 更新（競合対策でトランザクション）
+  // 参加/待機更新（競合対策：トランザクション）
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new Error("not found");
@@ -165,9 +179,10 @@ async function handleAdminCancel(eventId: string, req: Request) {
         .catch((e) => console.error("notify(promotion/save) failed", e));
 
       const uSnap = await db.collection("users").doc(promotedUser).get();
-      const uData =
-        (uSnap.exists ? (uSnap.data() as UserDoc) : undefined) || {};
-      const to = normalizeLineTo(uData.lineUserId ?? promotedUser);
+      const uData: UserDoc | undefined = uSnap.exists
+        ? (uSnap.data() as UserDoc)
+        : undefined;
+      const to = normalizeLineTo(uData?.lineUserId ?? promotedUser);
       if (to) {
         await pushPromotedMessage({ to, title, whenLabel, eventUrl }).catch(
           (e) => console.error("notify(promotion/push) failed", e)
@@ -179,13 +194,12 @@ async function handleAdminCancel(eventId: string, req: Request) {
   return NextResponse.json({ ok: true, promotedUser });
 }
 
-/* ========= Route Handlers (ctx なし) ========= */
+/* ========= Route Handlers（ctx なし） ========= */
 export async function POST(req: Request) {
   const id = getEventIdFromRequest(req);
   if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 });
   return handleAdminCancel(id, req);
 }
-
 export async function DELETE(req: Request) {
   const id = getEventIdFromRequest(req);
   if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 });
