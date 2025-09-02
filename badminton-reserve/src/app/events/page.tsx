@@ -1,6 +1,9 @@
 // src/app/events/page.tsx
 import YearMonthChooser from "./_components/YearMonthPicker";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function EventsIndex() {
   // JSTで現在の年月を初期値に
   const now = Date.now();
