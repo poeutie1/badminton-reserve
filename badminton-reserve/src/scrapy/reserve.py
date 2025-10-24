@@ -20,7 +20,7 @@ WANTED_SLOTS = [
     "19:30-20:30",
     "20:30-21:30"
 ]
-TARGET_DATE = "2025-11-11"
+TARGET_DATE = "2025-11-20"
 
 START_OFFSET_DAYS = 0
 DAYS_AHEAD = 31
@@ -2364,8 +2364,9 @@ def scan_once(page) -> bool:
 
 
     # ---- 3枠（WANTED_SLOTS）すべて選択 ----
-    if not pick_exact_three_slots_for_current_day(page):
-        print("[time] 3枠すべて選択できず")
+    # ---- 指定したスロット（WANTED_SLOTS）だけ選択 ----
+    if not pick_wanted_slots_for_current_day(page):
+        print("[time] 指定スロットをすべて選択できませんでした")
         recover_and_to_month(page)
         return False
 
@@ -2544,9 +2545,10 @@ def _force_on_checktime(page, input_el) -> bool:
         return False
 
 
-def pick_exact_three_slots_for_current_day(page) -> bool:
+def pick_wanted_slots_for_current_day(page) -> bool:
     """
-    時間帯別ページで、ROOM_LABEL の行から「○」を左から3つ選ぶ（ヘッダ解析なし）。
+    時間帯別ページで、WANTED_SLOTS で指定したスロットだけを選択する（○/△のみ）。
+    全部取れたら True。1つでも取れなかったら False（=中断して戻る想定）。
     """
     if not is_timeslot_grid(page):
         return False
@@ -2556,45 +2558,39 @@ def pick_exact_three_slots_for_current_day(page) -> bool:
         if DEBUG: print("[time] 多目的ホールの行が見つからない")
         return False
 
-    # 行内の「○」ラベルを収集
-    labs = row.locator("td label").filter(has_text="○")
-    n = labs.count()
-    if DEBUG: print(f"[time] ○ラベル数: {n}")
+    cols = _collect_wanted_cols_for_row(table, row)  # ← ヘッダ解析して WANTED_SLOTS に合う列を拾う
+    if DEBUG: print(f"[time] wanted cols={cols} slots={WANTED_SLOTS}")
+    if not cols:
+        # ヘッダの表記が微妙なときはここが 0 になる。norm_wave の修正でまず解消されるはず。
+        return False
 
+    cells = row.locator("td")
     picked = 0
-    for i in range(min(3, n)):
-        lab = labs.nth(i)
-        try:
-            lab.scroll_into_view_if_needed(timeout=500)
-        except Exception:
-            pass
-
-        # まずラベルを正攻法で押す（重なり対策で force=True）
-        try:
-            lab.click(timeout=800, force=True)
-        except Exception:
-            pass
-
-        # for属性から input を掴んで最終同期
-        cid = (lab.get_attribute("for") or "").strip()
-        if not cid:
+    for ci in cols:
+        if ci >= cells.count():
             continue
-        inp = page.locator(f"#{cid}")
-        if not inp.count():
+        cell = cells.nth(ci)
+
+        # ○/△のみ対象
+        mark_txt = (cell.text_content() or "")
+        okish = ("○" in mark_txt) or ("△" in mark_txt) or cell.locator(
+            "img[alt*='○' i], img[alt*='maru' i], img[alt*='circle' i], img[alt*='△' i], img[alt*='triangle' i]"
+        ).count()
+        if not okish:
+            if DEBUG: print(f"[time] col {ci}: mark is not OK (skip)")
             continue
 
-        if _force_on_checktime(page, inp.first):
+        if _force_checktime_in_cell(page, cell):
             picked += 1
             page.wait_for_timeout(80)
 
-    # 進捗ログ
     try:
         now = page.locator("input[name='checktime']:checked").count()
     except Exception:
         now = -1
-    if DEBUG: print(f"[time] picked={picked}/3  (checked now={now})")
+    if DEBUG: print(f"[time] picked {picked}/{len(cols)} (checked now={now})")
 
-    return picked >= 3
+    return picked == len(cols)
 
 
 def _parse_date_any(s: str) -> datetime:
@@ -2632,10 +2628,12 @@ def book_single_date(page, d: datetime) -> bool:
         return False
 
     # 3枠すべて選べるか
-    if not pick_exact_three_slots_for_current_day(page):
-        if DEBUG: print("[single] 3枠をすべて選択できず → 中断")
+    # ---- 指定したスロット（WANTED_SLOTS）だけ選択 ----
+    if not pick_wanted_slots_for_current_day(page):
+        print("[time] 指定スロットをすべて選択できませんでした")
         recover_and_to_month(page)
         return False
+
 
     # 次へ（= 詳細申請フォームへ）
     if not next_after_timeslots(page):
