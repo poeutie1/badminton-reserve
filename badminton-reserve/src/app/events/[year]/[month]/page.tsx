@@ -83,6 +83,18 @@ function normalizeIds(arr: unknown[] | undefined): string[] {
   return Array.from(new Set(cleaned));
 }
 
+const LabeledDivider = ({ label }: { label: string }) => (
+  <div className="relative my-3">
+    <div className="border-t border-gray-300" />
+    <span
+      className="absolute -top-3 left-1/2 -translate-x-1/2
+                     bg-white dark:bg-gray-900 px-2 text-xs text-gray-500"
+    >
+      {label}
+    </span>
+  </div>
+);
+
 function fmtJstDate(d: Date) {
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "日付未設定";
   return d.toLocaleString("ja-JP", {
@@ -388,12 +400,18 @@ export default async function EventsPage({ params }: Props) {
                 adminEventId={isAdmin ? ev.id : undefined} // ★ 追加
               />
 
+              {/* ←ココを追加：待機者がいるときだけ、ラベル付き区切り線 */}
               {ev.waitlistProfiles.length > 0 && (
-                <WaitlistLine
-                  people={ev.waitlistProfiles}
-                  me={userId ?? undefined}
-                  adminEventId={isAdmin ? ev.id : undefined} // ★ 追加
-                />
+                <>
+                  <LabeledDivider
+                    label={`ここから待機（${ev.waitlistProfiles.length}）`}
+                  />
+                  <WaitlistLine
+                    people={ev.waitlistProfiles}
+                    me={userId ?? undefined}
+                    adminEventId={isAdmin ? ev.id : undefined}
+                  />
+                </>
               )}
 
               <div className="mt-2">

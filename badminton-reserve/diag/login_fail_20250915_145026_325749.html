@@ -1,0 +1,321 @@
+<!DOCTYPE html><html lang="ja"><!--<![endif]--><head id="ctl00_Head1"><meta charset="utf-8"><title>
+	豊島区公共施設予約システム
+</title><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Cache-Control" content="no-cache"><meta http-equiv="Expires" content="-1"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="/toshima/WebR/Content/css/font-awesome.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery-ui-1.11.2.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default_print.css?LastUpdDate=20180817" media="print" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/tooltipster.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery.remodal.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-1.11.1.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-ui-1.11.2.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/common.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.tooltipster.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.remodal.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.inputfocus.js?LastUpdDate=20180817"></script>
+	<!--[if lt IE 9]> 
+	<script src="/toshima/WebR/Scripts/html5.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/IE9.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/css3-mediaqueries.js?LastUpdDate=20180817"></script> 
+	<![endif]-->
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            unload_flg = 0;
+            
+            // 文字サイズ変更時のみスケール調整
+            
+        });
+	    $(document).on('close', '[data-remodal-id=logoutInfo]', function () {
+		    dialog_flg = 0;
+	    });
+	    $(document).on('close', '[data-remodal-id=loginInfo]', function () {
+		    dialog_flg = 0;
+	    });
+        $.ajaxSetup({
+            error: function (xhr, status, error) {
+                    var errorpage = 'https://www2.pf489.com/Toshima/WebR/Error/html/GenericError.html';
+                    if (errorpage) {
+                        dialog_flg = 1; // アンロードのメッセージを表示させない
+                        window.location.href = errorpage;
+                    }
+                }
+        });
+    </script>
+
+</head><body style="overflow-x: hidden;">
+  
+	<link href="/toshima/WebR/Content/css/WgR_Login.css?LastUpdDate=20180817" media="screen" rel="stylesheet" type="text/css">
+	<script type="text/javascript">
+	    $(document).ready(function () {
+	        $(".keyboard").hide();
+	        var flg = "close";
+	        $("#btnShowKeyboard").click(function () {
+	            $(".keyboard").slideToggle();
+	            if (flg == "close") {
+	                flg = "open";
+	            } else {
+	                flg = "close";
+	            }
+	        });
+            $(".zenToHan").blur(function(){
+			    var val = $(this).val();
+			    var han = val.replace(/[！-～]/g,function(s){return String.fromCharCode(s.charCodeAt(0)-0xFEE0)});
+			    if(val.match(/[！-～]/g)){
+				    $(this).val(han.replace(/　/g,' '));
+			    }
+            });
+            // アンロード時のダイアログ対象外、二重送信
+		    beforeSubmit(".lost_pswd a");
+
+
+         
+
+		    $(".pswd input").on("keydown",function(e){
+			    var kc;
+			    if(window.event) {
+				    kc = window.event.keyCode;
+			    } else {
+				    kc = e.which;
+			    }
+			    if(kc == 13){
+				    dialog_flg = 1;
+				    __doPostBack("nextlogin", "");
+			    }
+		    });
+	    });
+
+	    var inputKey = isNaN;
+	    function inputFocus(input) {
+	        inputKey = input;
+	    }
+
+	    // ボタン活性化
+	    function changeButtonAgree(value) {
+	        document.forms.form1, agree.disabled = value;
+	        document.forms.form1, agreeCancel.disabled = value;
+
+            if(value){
+	            $("#agree").addClass('disabled');
+	            $("#agreeCancel").addClass('disabled');
+            } else {
+	            $("#agree").removeClass('disabled');
+	            $("#agreeCancel").removeClass('disabled');
+            }
+	    }
+        
+        // 利用者IDテキストボックスのEnterキー押下時
+        function nextFocus(code)
+        {
+            if( code == 13 )
+            {
+                // パスワードにフォーカス移動
+                document.forms["form1"].elements["passWord"].focus();
+            }
+        }
+	</script>
+
+    <style type="text/css">
+        
+        
+        /**** 文字サイズ変更時のみスケール調整 ****/
+        
+    </style>
+    
+
+
+<form action="/toshima/WebR/Home/WgR_Login" id="form1" method="post" autocomplete="off"><input name="__RequestVerificationToken" type="hidden" value="L6mw3c7IYH4URsFbvpJ/wORxn0UTrPNgFipB1T8S+hFyoxV0gHjGHHQ2JzNzgL5HV84t1TkbVeiKRmB+wYvQX3nB6UX19SJ8EFM4vbnfBJ7IQyAwCJU3Pl7dhAoqgY+THuosdA==" style="">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" style="">
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" style="">
+<div id="wrap" class="remodal-bg">
+	<div id="wrap_head">
+        
+        <div id="head">
+        
+        <h1><span class="city">豊島区</span><span class="title">公共施設予約システム</span></h1>
+        
+			  <ul>
+                  <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li>
+			  </ul>
+			  <div class="dock_nav">
+				  <a href="#nav">メニュー</a>
+			  </div>
+		  </div>
+	</div>
+  <div id="body">
+    
+    
+
+	<div class="content_head">
+		<h2>ログイン</h2>
+		<p class="desc">利用者IDとパスワードを入力して「ログイン」ボタンを押してください。
+        <a href="#notice" class="reference">ご利用にあたって</a></p>
+
+	</div>
+	<div class="content_body clearfix">
+		<div class="login_info clearfix">
+			<dl class="userid clearfix">
+				<dt>
+                利用者ID
+                </dt>
+				<dd><input type="text" name="txtUserID" id="userID" onkeydown="nextFocus(event.keyCode);" onfocus="inputFocus(this);" maxlength="16" value="" class="zenToHan 
+                
+                " style=""></dd>
+			</dl>
+			<dl class="pswd clearfix">
+				<dt>パスワード</dt>
+				<dd><input type="password" class="allow_submit " name="txtPassWord" id="passWord" onfocus="inputFocus(this)" maxlength="16" value="" style=""></dd>
+			</dl>
+            
+			<div class="lost_pswd"><a href="javascript:__doPostBack('lost_pswd','')">パスワードを忘れた場合</a></div>
+            
+			<div class="mouse"><input type="button" id="btnShowKeyboard" class="btnGray" value=" マウスで入力" onclick="this.value=((this.value==' マウスで入力') ? ' 閉じる' : ' マウスで入力');" style=""></div>
+            
+			<div class="keyboard clearfix" style="display: none;">
+            
+				<ul class="num">
+					<li><input type="button" class="btnSky" name="btn1" id="btn1" value="1" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn2" id="btn2" value="2" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn3" id="btn3" value="3" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn4" id="btn4" value="4" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn5" id="btn5" value="5" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn6" id="btn6" value="6" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn7" id="btn7" value="7" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn8" id="btn8" value="8" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn9" id="btn9" value="9" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btn0" id="btn0" value="0" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnHaihun" id="btnHaihun" value="‐" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+				</ul>
+                
+				<ul class="char">
+					<li><input type="button" class="btnSky" name="btnA" id="btnA" value="a" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnB" id="btnB" value="b" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnC" id="btnC" value="c" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnD" id="btnD" value="d" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnE" id="btnE" value="e" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnF" id="btnF" value="f" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnG" id="btnG" value="g" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnH" id="btnH" value="h" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnI" id="btnI" value="i" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnJ" id="btnJ" value="j" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnK" id="btnK" value="k" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnL" id="btnL" value="l" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnM" id="btnM" value="m" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnN" id="btnN" value="n" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnO" id="btnO" value="o" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnP" id="btnP" value="p" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnQ" id="btnQ" value="q" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnR" id="btnR" value="r" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnS" id="btnS" value="s" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnT" id="btnT" value="t" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnU" id="btnU" value="u" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnV" id="btnV" value="v" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnW" id="btnW" value="w" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnX" id="btnX" value="x" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnY" id="btnY" value="y" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+					<li><input type="button" class="btnSky" name="btnZ" id="btnZ" value="z" onclick="inputKey.value=inputKey.value+this.value" style=""></li>
+				</ul>
+                
+				<ul>
+					<li><input type="button" class="btnGray" id="btnOneClear" onclick="if(inputKey.value!=null){inputKey.value=inputKey.value.substr(0,inputKey.value.length-1)};" value="最後の1文字をクリア" style=""></li>
+					<li><input type="button" class="btnGray" id="btnAllClear" onclick="if(inputKey.value!=null){inputKey.value=inputKey.value.substr(0,0)};" value="全てクリア" style=""></li>
+				</ul>
+			</div>
+            
+			<div class="notice" id="notice">
+				<h3>ご利用にあたって</h3>
+				<p>
+                このシステムで施設を予約するためには、利用者登録が必要です。<br>利用者登録がお済みの方で、初めてシステムを利用される方は、「パスワード設定」のボタンを押して、パスワードを設定してください。<br>
+                           利用者登録がお済みでない方（利用者ＩＤのない方）は、ご利用になる施設で利用者登録をお願いします。
+                    
+                </p>
+			</div>
+            
+		</div>
+        
+		<div class="unregistered">
+        
+                <h3>パスワード設定がお済みでない方</h3>
+            
+                <input type="button" id="idpass" name="command" class="btnGreen" value=" パスワード設定" onclick="javascript:__doPostBack('idpass','')" style="">
+                <script type="text/javascript">beforeSubmit("", "#idpass");</script>
+        
+		</div>
+        
+	</div>
+
+
+  </div>
+  
+
+    <div class="navbar">
+		<ul>
+		    <li class="next login"><a href="javascript:__doPostBack('nextlogin','')" class="btnBlue">ログイン</a></li>
+            
+            <li class="menu"><a href="javascript:__doPostBack('menu','')" class="btnBlue">メニュー</a></li>
+
+		</ul>
+	</div>
+
+
+</div>
+
+
+    <!-- メッセージダイアログ -->
+    
+
+<script type="text/javascript">
+    
+    function showMessageDialog(style,title,message) {
+        showMessageDialog(style,title,message,"msgconfirm",null);
+    }
+    function showMessageDialog(style,title,message,confirmCmd,confirmArg) {
+        $("#messageDlg").removeClass().addClass('remodal ' + style);
+        $("#messageDlg h2").text(title);
+        $("#messageDlg div p").html(message);
+        $("#messageDlg ul").remove();
+        if (style=="notice") {
+            $("#messageDlg div").after(
+                "<ul class=\"clearfix\">" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-confirm\" value=\"はい\" onclick=\"__doPostBack('"+confirmCmd+"','"+confirmArg+"');\"></li>" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-cancel\" value=\"いいえ\" onclick=\"location.href='#';\"></li>" +
+                "</ul>");
+            beforeSubmit('', '#messageDlg .remodal-confirm');
+        }
+        location.href='#messageDlg';
+    };
+</script>
+
+
+    
+
+
+</form>
+
+
+<a class="blank tooltipstered"></a><div class="remodal-overlay"><div class="remodal info" data-remodal-id="SesseionTimeoutWarn" style="visibility: visible;">
+	<h2>メッセージ</h2>
+	<div><p>セッションタイムアウトまであと0分です。</p></div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal nav" data-remodal-id="nav" style="visibility: visible;">
+	<h2>メニュー</h2>
+    
+	<ul>
+        <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li>
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal" id="messageDlg" data-remodal-id="messageDlg" style="visibility: visible;">
+    <h2></h2>
+    <div class="clearfix"><p></p>
+         このダイアログは右上の×で閉じることができます。<br>
+        （ブラウザの戻るボタンは使用しないでください。）
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal policy" data-remodal-id="policy_card" style="visibility: visible;">
+        <h2>利用規約の確認</h2>
+        <p>設定を行うには利用規約の内容をご確認の上、同意いただく必要があります。</p>
+        <div>
+	        <a href="" target="_blank" class="btnGreen large" onclick="changeButtonAgree(false)"> 利用規約を確認</a>
+        </div>
+        <ul class="clearfix">
+	        <li><input type="button" class="btnBlue remodal-confirm " name="agree" id="agree" value="利用規約に同意する" onclick="javascript:__doPostBack('idpass','')" disabled="" style=""></li>
+	        <li><input type="button" class="btnGray remodal-cancel " name="agreeCancel" id="agreeCancel" value="利用規約に同意しない" onclick="changeButtonAgree(true)" disabled="" style=""></li>
+        </ul>
+    <a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="tooltipster-base blank tooltipster-fade tooltipster-fade-show" style="transition-duration: 350ms; animation-duration: 350ms; top: 697px; left: 0px;"><div class="tooltipster-content"></div><div class="tooltipster-arrow-top tooltipster-arrow" style="left:-10px;"><span style="border-color:rgba(0, 0, 0, 0);"></span></div></div></body></html>
