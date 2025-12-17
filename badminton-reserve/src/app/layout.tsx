@@ -3,7 +3,7 @@ import "./globals.css";
 import Link from "next/link";
 import SessionUpserter from "./events/_components/SessionUpserter";
 import { Providers } from "./providers";
-import GoogleAdsense from "./_components/GoogleAdsense";
+import GoogleAdsense from "./GoogleAdsense";
 
 export default function RootLayout({
   children,
