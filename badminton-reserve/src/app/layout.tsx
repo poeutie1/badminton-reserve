@@ -1,7 +1,9 @@
+// app/layout.tsx
 import "./globals.css";
 import Link from "next/link";
 import SessionUpserter from "./events/_components/SessionUpserter";
 import { Providers } from "./providers";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -11,13 +13,21 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9264651168388030"
-          crossOrigin="anonymous"
-        ></script>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-9264651168388030"
+        ></meta>
       </head>
       <body className="min-h-screen bg-sky-50">
+        {/* ★ AdSense コード（中身はGoogleが出してきたのと同じ） */}
+        <Script
+          id="adsense-init"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9264651168388030"
+          crossOrigin="anonymous" // ← HTMLの crossorigin と同じ意味
+          strategy="afterInteractive"
+        />
+
         <Providers>
           {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
           <SessionUpserter />
