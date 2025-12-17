@@ -1,3 +1,3 @@
-2025/10/01-09:05:30.434 26ee821 Reusing MANIFEST /Users/satorio/badminton-reserve/udata/Default/shared_proto_db/MANIFEST-000001
-2025/10/01-09:05:30.434 26ee821 Recovering log #10
-2025/10/01-09:05:30.437 26ee821 Reusing old log /Users/satorio/badminton-reserve/udata/Default/shared_proto_db/000010.log 
+2025/11/30-15:08:55.073 16db2c5 Reusing MANIFEST /Users/satorio/badminton-reserve/udata/Default/shared_proto_db/MANIFEST-000001
+2025/11/30-15:08:55.126 16db2c5 Recovering log #13
+2025/11/30-15:08:55.131 16db2c5 Reusing old log /Users/satorio/badminton-reserve/udata/Default/shared_proto_db/000013.log 

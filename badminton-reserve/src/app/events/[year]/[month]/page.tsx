@@ -14,6 +14,7 @@ import PromotionBanner, {
 } from "@/app/events/_components/PromotionBanner";
 import WaitlistLine from "@/app/events/_components/WaitlistLine";
 import DeleteEventButton from "@/app/events/_components/DeleteEventButton";
+import AdSlot from "@/app/events/_components/AdSlot";
 
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -350,6 +351,8 @@ export default async function EventsPage({ params }: Props) {
     });
   }
 
+  const adSlotId = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID ?? "";
+
   // --- 3) 描画 ---
   return (
     <div className="space-y-3 p-4">
@@ -361,6 +364,7 @@ export default async function EventsPage({ params }: Props) {
       />
 
       <PromotionBanner notes={notes} />
+      {adSlotId && <AdSlot slotId={adSlotId} />}
 
       {events.map((ev) => (
         <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
