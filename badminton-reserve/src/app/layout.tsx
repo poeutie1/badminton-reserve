@@ -8,14 +8,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const siteVerification =
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? "";
+
   return (
     <html lang="ja">
       <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9264651168388030"
-          crossOrigin="anonymous"
-        ></script>
+        {siteVerification && (
+          <meta
+            name="google-site-verification"
+            content={siteVerification}
+          />
+        )}
       </head>
       <body className="min-h-screen bg-sky-50">
         <Providers>
