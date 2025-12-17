@@ -1,4 +1,3 @@
-// app/layout.tsx
 import "./globals.css";
 import Link from "next/link";
 import SessionUpserter from "./events/_components/SessionUpserter";
@@ -12,21 +11,18 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        {/* ★ AdSense が「このタグを貼って」と出しているものをそのまま再現する */}
-        <meta
-          name="google-adsense-account"
-          content="ca-pub-9264651168388030"
-        ></meta>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9264651168388030"
+          crossOrigin="anonymous"
+        ></script>
       </head>
       <body className="min-h-screen bg-sky-50">
-        <div className="bg-yellow-400 text-center text-xs font-bold py-1 text-black">
-          DEBUG: layout.tsx からのテスト表示
-        </div>
         <Providers>
+          {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
           <SessionUpserter />
 
           <nav className="sticky top-0 bg-white border-b">
-            {/* ここは元のままでOK */}
             <ul className="mx-auto max-w-4xl flex gap-4 p-3 text-sm">
               <li>
                 <Link href="/mypage">マイページ</Link>
