@@ -1,3 +1,4 @@
+// app/layout.tsx
 import "./globals.css";
 import Link from "next/link";
 import SessionUpserter from "./events/_components/SessionUpserter";
@@ -8,25 +9,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const siteVerification =
-    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? "";
-
   return (
     <html lang="ja">
       <head>
-        {siteVerification && (
-          <meta
-            name="google-adsense-account"
-            content="ca-pub-9264651168388030"
-          />
-        )}
+        {/* ★ AdSense が「このタグを貼って」と出しているものをそのまま再現する */}
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-9264651168388030"
+        ></meta>
       </head>
       <body className="min-h-screen bg-sky-50">
         <Providers>
-          {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
           <SessionUpserter />
 
           <nav className="sticky top-0 bg-white border-b">
+            {/* ここは元のままでOK */}
             <ul className="mx-auto max-w-4xl flex gap-4 p-3 text-sm">
               <li>
                 <Link href="/mypage">マイページ</Link>
