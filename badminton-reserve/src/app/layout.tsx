@@ -19,6 +19,9 @@ export default function RootLayout({
         ></meta>
       </head>
       <body className="min-h-screen bg-sky-50">
+        <div className="bg-yellow-400 text-center text-xs font-bold py-1 text-black">
+          DEBUG: layout.tsx からのテスト表示
+        </div>
         <Providers>
           <SessionUpserter />
 
