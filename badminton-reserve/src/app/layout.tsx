@@ -17,7 +17,7 @@ export default function RootLayout({
         {siteVerification && (
           <meta
             name="google-site-verification"
-            content={siteVerification}
+            content="ca-pub-9264651168388030"
           />
         )}
       </head>
