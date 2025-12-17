@@ -16,7 +16,7 @@ export default function RootLayout({
       <head>
         {siteVerification && (
           <meta
-            name="google-site-verification"
+            name="google-adsense-account"
             content="ca-pub-9264651168388030"
           />
         )}
