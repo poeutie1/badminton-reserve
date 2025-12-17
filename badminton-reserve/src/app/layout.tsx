@@ -10,6 +10,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9264651168388030"
+          crossOrigin="anonymous"
+        ></script>
+      </head>
       <body className="min-h-screen bg-sky-50">
         <Providers>
           {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
