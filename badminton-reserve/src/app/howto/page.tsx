@@ -21,24 +21,33 @@ export default function HowToUsePage() {
           <li>
             待機は参加者数が減ったときに自動で繰り上がります。その際に、本アカウントにて通知がきます。
           </li>
-          <h2 className="text-xl font-semibold mb-2">注意点</h2>
-          <ul className="list-disc pl-5">
-            <li>
-              ページ右上のログインボタンはLINEにログインできていないときのみ押してください。
-            </li>
-          </ul>
-          <ul className="list-disc pl-5">
-            <li>
-              通信エラー等で状態が反映されない場合は、ページ再読み込み →
-              再ログイン をお試しください。
-            </li>
-          </ul>
-          <ul className="list-disc pl-5">
-            <li>
-              ボタンを押してからページに反映されるまで時間がかかることがあります。
-            </li>
-          </ul>
         </ol>
+
+        <div className="h-4" />
+
+        <h2 className="text-xl font-semibold mb-2">注意点</h2>
+        <ul className="list-disc pl-5">
+          <li>
+            ページ右上のログインボタンはLINEにログインできていないときのみ押してください。
+          </li>
+        </ul>
+        <ul className="list-disc pl-5">
+          <li>
+            通信エラー等で状態が反映されない場合は、ページ再読み込み →
+            再ログイン をお試しください。
+          </li>
+        </ul>
+        <ul className="list-disc pl-5">
+          <li>
+            ボタンを押してからページに反映されるまで時間がかかることがあります。
+          </li>
+        </ul>
+
+        <div className="mt-4 space-y-2 text-sm text-gray-700">
+          <p>
+            何かお困りごとがありましたら、お問い合わせフォームからご連絡ください。サイトエラーなどを見つけた場合も、お知らせいただければと思います。
+          </p>
+        </div>
       </section>
     </div>
   );
