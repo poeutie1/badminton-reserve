@@ -33,6 +33,7 @@
     "next-auth": "^5.0.0-beta.29",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "resend": "^6.6.0",
     "zod": "^4.0.17"
   },
   "devDependencies": {
