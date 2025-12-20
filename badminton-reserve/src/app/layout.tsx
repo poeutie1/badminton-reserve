@@ -37,6 +37,9 @@ export default function RootLayout({
                 <Link href="/howto">使い方</Link>
               </li>
               <li>
+                <Link href="/contact">お問い合わせ</Link>
+              </li>
+              <li>
                 <Link href="/admin">管理者用ページ</Link>
               </li>
               <li className="ml-auto">
