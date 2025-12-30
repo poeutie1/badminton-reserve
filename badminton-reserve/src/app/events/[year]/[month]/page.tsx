@@ -15,6 +15,7 @@ import PromotionBanner, {
 import WaitlistLine from "@/app/events/_components/WaitlistLine";
 import DeleteEventButton from "@/app/events/_components/DeleteEventButton";
 import AdSlot from "@/app/events/_components/AdSlot";
+import PolicyFooter from "@/app/events/_components/PolicyFooter";
 
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -371,6 +372,7 @@ export default async function EventsPage({ params }: Props) {
   }
 
   const adSlotId = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID ?? "";
+  const shouldShowAds = Boolean(adSlotId) && events.length > 0;
   const monthNote = getMonthNote(month);
 
   // --- 3) 描画 ---
@@ -410,7 +412,7 @@ export default async function EventsPage({ params }: Props) {
       </div>
 
       <PromotionBanner notes={notes} />
-      {adSlotId && <AdSlot slotId={adSlotId} />}
+      {shouldShowAds && <AdSlot slotId={adSlotId} />}
 
       {events.map((ev) => (
         <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
@@ -482,6 +484,8 @@ export default async function EventsPage({ params }: Props) {
           </details>
         </div>
       ))}
+
+      <PolicyFooter />
     </div>
   );
 }
