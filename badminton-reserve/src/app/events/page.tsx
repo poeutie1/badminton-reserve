@@ -1,5 +1,4 @@
 // src/app/events/page.tsx
-import PolicyFooter from "./_components/PolicyFooter";
 import YearMonthChooser from "./_components/YearMonthPicker";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +15,6 @@ export default function EventsIndex() {
     <div className="mx-auto max-w-md p-6">
       <h1 className="text-xl font-semibold mb-4">月を選んで表示</h1>
       <YearMonthChooser defaultYear={defaultYear} defaultMonth={defaultMonth} />
-      <PolicyFooter className="mt-6" />
     </div>
   );
 }
