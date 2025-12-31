@@ -14,8 +14,6 @@ import PromotionBanner, {
 } from "@/app/events/_components/PromotionBanner";
 import WaitlistLine from "@/app/events/_components/WaitlistLine";
 import DeleteEventButton from "@/app/events/_components/DeleteEventButton";
-import AdSlot from "@/app/events/_components/AdSlot";
-import PolicyFooter from "@/app/events/_components/PolicyFooter";
 
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -150,25 +148,6 @@ function monthRangeJST(year: number, month: number) {
     start: new Date(jstStart - JST_OFFSET),
     end: new Date(jstEnd - JST_OFFSET),
   };
-}
-
-const MONTH_NOTES: Record<number, string> = {
-  1: "年始は開催が変動しやすい月です。追加日程が出たら随時反映します。",
-  2: "寒さで体調を崩しやすい時期なので、無理のない参加でOKです。",
-  3: "年度末で予定が変わりやすい月です。空き枠や追加開催をチェックしてください。",
-  4: "新年度のスタート月。初参加や久しぶりの参加も歓迎です。",
-  5: "連休の影響で開催日が前後します。早めの予約がおすすめです。",
-  6: "梅雨で体育館の都合が変わることがあります。最新の案内を確認してください。",
-  7: "暑さが強い時期です。水分補給など対策をお願いします。",
-  8: "お盆周辺は開催が少なめです。空き枠が出やすいのでこまめに確認を。",
-  9: "祝日で週が変則になりがちです。日程の更新にご注意ください。",
-  10: "秋は開催を増やすことがあります。気になる回があれば早めに参加登録を。",
-  11: "年末に向けて予定変更が出やすい月です。直前の案内も確認してください。",
-  12: "年末は開催数が前後します。空き枠・追加開催の更新をお待ちください。",
-};
-
-function getMonthNote(month: number): string {
-  return MONTH_NOTES[month] ?? "開催状況は随時更新します。";
 }
 
 /* ========= Page ========= */
@@ -371,10 +350,6 @@ export default async function EventsPage({ params }: Props) {
     });
   }
 
-  const adSlotId = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID ?? "";
-  const shouldShowAds = Boolean(adSlotId) && events.length > 0;
-  const monthNote = getMonthNote(month);
-
   // --- 3) 描画 ---
   return (
     <div className="space-y-3 p-4">
@@ -385,34 +360,7 @@ export default async function EventsPage({ params }: Props) {
         className="hidden"
       />
 
-      <div className="rounded-xl bg-white p-4 shadow space-y-3">
-        <div>
-          <h1 className="text-lg font-semibold">
-            {year}年{month}月のイベント
-          </h1>
-          <div className="mt-2 space-y-1 text-sm text-gray-600">
-            <p>
-              <span className="font-semibold text-gray-700">目的：</span>
-              今月の開催予定と参加状況を一覧で確認するためのページです。
-            </p>
-            <p>
-              <span className="font-semibold text-gray-700">使い方：</span>
-              各イベントから参加・キャンセル・待機登録ができます。
-            </p>
-            <p>
-              開催数は月によって変わります。少ない月は、追加開催や空き枠の更新を
-              確認するために活用してください。
-            </p>
-          </div>
-        </div>
-        <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
-          <div className="font-medium text-gray-700">今月の補足</div>
-          <p className="mt-1">{monthNote}</p>
-        </div>
-      </div>
-
       <PromotionBanner notes={notes} />
-      {shouldShowAds && <AdSlot slotId={adSlotId} />}
 
       {events.map((ev) => (
         <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
@@ -484,8 +432,6 @@ export default async function EventsPage({ params }: Props) {
           </details>
         </div>
       ))}
-
-      <PolicyFooter />
     </div>
   );
 }
