@@ -351,6 +351,13 @@ export default async function EventsPage({ params }: Props) {
   }
 
   // --- 3) 描画 ---
+  // JSTで「今日の0時」を基準に、非adminは過去イベントを非表示
+  const todayJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  todayJST.setUTCHours(0, 0, 0, 0);
+  const visibleEvents = isAdmin
+    ? events
+    : events.filter((ev) => ev.date >= todayJST);
+
   return (
     <div className="space-y-3 p-4">
       {/* デバッグ用（必要なくなったら削除OK） */}
@@ -362,7 +369,7 @@ export default async function EventsPage({ params }: Props) {
 
       <PromotionBanner notes={notes} />
 
-      {events.map((ev) => (
+      {visibleEvents.map((ev) => (
         <div key={ev.id} className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow">
           <div className="font-semibold">{ev.title}</div>
           <div className="font-semibold">{fmtJstDate(ev.date)}</div>
