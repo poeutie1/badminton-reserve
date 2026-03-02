@@ -14,7 +14,7 @@ export default function ContactPage() {
             NEW
           </span>
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-black dark:text-gray-100">
           練習会に関するご質問、ご相談などはこちらのフォームからお送りください。返信はメールで行います。
         </p>
       </div>
