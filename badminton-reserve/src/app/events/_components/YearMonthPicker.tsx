@@ -42,9 +42,9 @@ export default function YearMonthChooser({
       className="flex flex-col gap-3"
     >
       <div className="flex items-center gap-2">
-        <label className="text-sm text-gray-600">年</label>
+        <label className="text-sm text-black dark:text-gray-100">年</label>
         <select
-          className="border rounded px-2 py-1"
+          className="border dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-black dark:text-white"
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
         >
@@ -55,9 +55,9 @@ export default function YearMonthChooser({
           ))}
         </select>
 
-        <label className="text-sm text-gray-600 ml-3">月</label>
+        <label className="text-sm text-black dark:text-gray-100 ml-3">月</label>
         <select
-          className="border rounded px-2 py-1"
+          className="border dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-black dark:text-white"
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
         >

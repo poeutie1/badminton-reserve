@@ -85,10 +85,10 @@ function normalizeIds(arr: unknown[] | undefined): string[] {
 
 const LabeledDivider = ({ label }: { label: string }) => (
   <div className="relative my-3">
-    <div className="border-t border-gray-300" />
+    <div className="border-t border-gray-300 dark:border-gray-600" />
     <span
       className="absolute -top-3 left-1/2 -translate-x-1/2
-                     bg-white dark:bg-gray-900 px-2 text-xs text-gray-500"
+                     bg-white dark:bg-gray-800 px-2 text-xs text-black dark:text-gray-100"
     >
       {label}
     </span>
@@ -363,11 +363,11 @@ export default async function EventsPage({ params }: Props) {
       <PromotionBanner notes={notes} />
 
       {events.map((ev) => (
-        <div key={ev.id} className="rounded-xl bg-white p-4 shadow">
+        <div key={ev.id} className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow">
           <div className="font-semibold">{ev.title}</div>
           <div className="font-semibold">{fmtJstDate(ev.date)}</div>
 
-          <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
+          <div className="mt-1 flex items-center justify-between text-sm text-black dark:text-gray-100">
             {isAdmin && (
               <span className="text-xs text-red-500">[admin mode]</span>
             )}
@@ -377,14 +377,14 @@ export default async function EventsPage({ params }: Props) {
           </div>
 
           {ev.location && (
-            <div className="text-sm text-gray-500">📍 {ev.location}</div>
+            <div className="text-sm text-black dark:text-gray-100">📍 {ev.location}</div>
           )}
 
           <details className="mt-3 group" open={ev.joined || ev.inWaitlist}>
-            <summary className="cursor-pointer select-none text-sm text-gray-600 flex items-center gap-2">
+            <summary className="cursor-pointer select-none text-sm text-black dark:text-gray-100 flex items-center gap-2">
               <span className="group-open:hidden">▼参加者一覧</span>
               <span className="hidden group-open:inline">閉じる</span>
-              <span className="text-gray-500">
+              <span className="text-black dark:text-gray-100">
                 （参加: {ev.participants.length}/定員: {ev.capacity}
                 {ev.waitlistProfiles.length
                   ? `・待機 ${ev.waitlistProfiles.length}`

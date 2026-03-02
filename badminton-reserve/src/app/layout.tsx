@@ -11,12 +11,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className="min-h-screen bg-sky-50">
+      <body className="min-h-screen bg-sky-50 dark:bg-gray-950">
         <Providers>
           {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
           <SessionUpserter />
 
-          <nav className="sticky top-0 bg-white border-b">
+          <nav className="sticky top-0 bg-white dark:bg-gray-900 border-b dark:border-gray-700">
             <ul className="mx-auto max-w-4xl flex gap-4 p-3 text-sm">
               <li>
                 <Link href="/mypage">マイページ</Link>

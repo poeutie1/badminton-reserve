@@ -43,7 +43,7 @@ export default function HowToUsePage() {
           </li>
         </ul>
 
-        <div className="mt-4 space-y-2 text-sm text-gray-700">
+        <div className="mt-4 space-y-2 text-sm text-black dark:text-gray-100">
           <p>
             何かお困りごとがありましたら、お問い合わせフォームからご連絡ください。サイトエラーなどを見つけた場合も、お知らせいただければと思います。
           </p>

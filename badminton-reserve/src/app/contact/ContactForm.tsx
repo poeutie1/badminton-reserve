@@ -42,7 +42,7 @@ export default function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="name">
+        <label className="block text-sm font-medium text-black dark:text-gray-100" htmlFor="name">
           お名前
         </label>
         <input
@@ -50,13 +50,13 @@ export default function ContactForm() {
           id="name"
           name="name"
           type="text"
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded border dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white px-3 py-2"
           placeholder="千川 太郎"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="email">
+        <label className="block text-sm font-medium text-black dark:text-gray-100" htmlFor="email">
           連絡先メールアドレス
         </label>
         <input
@@ -64,20 +64,20 @@ export default function ContactForm() {
           id="email"
           name="email"
           type="email"
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded border dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white px-3 py-2"
           placeholder="you@example.com"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700" htmlFor="message">
+        <label className="block text-sm font-medium text-black dark:text-gray-100" htmlFor="message">
           お問い合わせ内容
         </label>
         <textarea
           required
           id="message"
           name="message"
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="mt-1 w-full rounded border dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white px-3 py-2"
           rows={5}
           placeholder="お問い合わせ内容をご記入ください。"
         />
