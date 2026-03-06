@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id             String          @id @default(cuid())
+  name           String
+  url            String?
+  industry       String?
+  tier           Int             @default(3) // 1=最優先 ~ 5
+  memo           String?
+  startingSalary Int?            // 新卒初任給（万円）
+  salaryNote     String?
+  loginUrl       String?
+  loginId        String?         // メールアドレス等
+  passwordNote   String?         // 「1Passwordに保存済み」等の注記
+  encryptedPassword String?      // AES-256-GCM暗号化済みパスワード
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  roles          Role[]
+  selectionSteps SelectionStep[]
+  logs           Log[]
+}
+
+model Role {
+  id             String          @id @default(cuid())
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  location       String?
+  salaryRange    String?
+  memo           String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  selectionSteps SelectionStep[]
+}
+
+model SelectionStep {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  roleId    String?
+  role      Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  stepType  String   // 説明会/ES/適性検査/面接/オファー
+  date      DateTime @default(now())
+  result    String   @default("未定") // 通過/落ち/未定
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  roleId    String?
+  title     String
+  body      String?
+  date      DateTime @default(now())
+  tags      String?  // カンマ区切り（MVP）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

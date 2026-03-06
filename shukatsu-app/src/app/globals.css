@@ -1,0 +1,399 @@
+@import "tailwindcss";
+
+:root {
+  /* Warm Japanese palette */
+  --ink: #1a1a2e;
+  --ink-light: #3d3a50;
+  --ink-muted: #6e6b7b;
+  --ink-faint: #9f9daa;
+
+  --paper: #f7f4ed;
+  --paper-warm: #f0ebe0;
+  --paper-card: #fdfcf9;
+
+  --vermillion: #c8432b;
+  --vermillion-light: #e8654e;
+  --vermillion-soft: #fdf0ed;
+
+  --indigo: #2e4057;
+  --indigo-deep: #1b2838;
+
+  --sage: #5a7a63;
+  --sage-light: #e8f0ea;
+
+  --amber: #b8860b;
+  --amber-light: #fdf5e6;
+
+  --rose: #a84448;
+  --rose-light: #fdf0f0;
+
+  --border: #e2ddd4;
+  --border-light: #ece8e0;
+
+  /* Fonts */
+  --font-display: 'Shippori Mincho', serif;
+  --font-body: 'Zen Kaku Gothic New', sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* Subtle paper texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Page entrance animation */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-in 0.5s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 50ms; }
+.delay-2 { animation-delay: 100ms; }
+.delay-3 { animation-delay: 150ms; }
+.delay-4 { animation-delay: 200ms; }
+.delay-5 { animation-delay: 250ms; }
+.delay-6 { animation-delay: 300ms; }
+.delay-7 { animation-delay: 350ms; }
+.delay-8 { animation-delay: 400ms; }
+
+/* Company card */
+.company-card {
+  position: relative;
+  background: var(--paper-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 20px 24px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(26, 26, 46, 0.04);
+}
+
+.company-card:hover {
+  border-color: var(--border);
+  box-shadow:
+    0 4px 12px rgba(26, 26, 46, 0.06),
+    0 1px 3px rgba(26, 26, 46, 0.04);
+  transform: translateY(-1px);
+}
+
+.company-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--vermillion);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.company-card:hover::before {
+  opacity: 1;
+}
+
+/* Section card */
+.section-card {
+  background: var(--paper-card);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(26, 26, 46, 0.03);
+}
+
+/* Item row */
+.item-row {
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.item-row:hover {
+  background: var(--paper-warm);
+  border-color: var(--border-light);
+}
+
+/* Form styling */
+.form-input {
+  width: 100%;
+  background: var(--paper-card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  color: var(--ink);
+  transition: all 0.2s ease;
+  line-height: 1.5;
+}
+
+.form-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px rgba(46, 64, 87, 0.08);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink-light);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--indigo);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary:hover {
+  background: var(--indigo-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27, 40, 56, 0.2);
+}
+
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vermillion);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.btn-accent:hover {
+  background: var(--vermillion-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(200, 67, 43, 0.2);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+  background: var(--paper-warm);
+}
+
+/* Status badges - stamp inspired */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  border: 1.5px solid currentColor;
+}
+
+.badge-pass {
+  color: var(--sage);
+  background: var(--sage-light);
+  border-color: var(--sage);
+}
+
+.badge-fail {
+  color: var(--rose);
+  background: var(--rose-light);
+  border-color: var(--rose);
+}
+
+.badge-pending {
+  color: var(--amber);
+  background: var(--amber-light);
+  border-color: var(--amber);
+}
+
+/* Tier stars */
+.tier-stars {
+  color: var(--vermillion);
+  letter-spacing: 1px;
+  font-size: 0.85rem;
+}
+
+/* Stat pill */
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--paper-warm);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* Header */
+.header-nav {
+  background: var(--indigo-deep);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Decorative divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border) 20%,
+    var(--border) 80%,
+    transparent
+  );
+  margin: 8px 0;
+}
+
+/* Tag chip */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--indigo);
+  background: rgba(46, 64, 87, 0.06);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Login info box */
+.info-box {
+  background: linear-gradient(135deg, var(--paper-warm), var(--paper-card));
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+/* Fieldset */
+.form-fieldset {
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--paper-warm), transparent);
+}
+
+.form-fieldset legend {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-light);
+  padding: 0 8px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+}
+
+/* Selection override for consistency */
+::selection {
+  background: rgba(200, 67, 43, 0.15);
+  color: var(--ink);
+}
