@@ -1,25 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { tierLabel } from "@/lib/utils";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function HomePage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const params = await searchParams;
   const q = params.q || "";
   const sort = params.sort || "updatedAt";
+  const userId = session.user.id;
 
   const companies = await prisma.company.findMany({
     where: q
       ? {
+          userId,
           OR: [
             { name: { contains: q } },
             { industry: { contains: q } },
           ],
         }
-      : undefined,
+      : { userId },
     orderBy:
       sort === "tier"
         ? { tier: "asc" }

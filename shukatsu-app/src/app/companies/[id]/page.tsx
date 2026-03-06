@@ -9,15 +9,20 @@ import { deleteLog } from "@/lib/actions/log";
 import { DeleteButton } from "@/components/delete-button";
 import { PasswordReveal } from "@/components/password-reveal";
 import { decrypt } from "@/lib/crypto";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function CompanyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const { id } = await params;
   const company = await prisma.company.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: {
       roles: { orderBy: { createdAt: "desc" } },
       selectionSteps: {

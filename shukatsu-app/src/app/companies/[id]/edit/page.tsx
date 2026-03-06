@@ -1,17 +1,21 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { updateCompany } from "@/lib/actions/company";
 import { CompanyForm } from "@/components/company-form";
 import { decrypt } from "@/lib/crypto";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 
 export default async function EditCompanyPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const { id } = await params;
-  const company = await prisma.company.findUnique({ where: { id } });
+  const company = await prisma.company.findUnique({ where: { id, userId: session.user.id } });
   if (!company) notFound();
 
   const updateWithId = updateCompany.bind(null, id);

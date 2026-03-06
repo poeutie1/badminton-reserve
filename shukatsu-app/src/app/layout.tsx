@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Link from "next/link";
+import { auth, signOut } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "就活管理アプリ",
   description: "企業情報・選考・ES/感想ログを一元管理",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html lang="ja">
       <head>
@@ -44,16 +47,34 @@ export default function RootLayout({
                 就活管理
               </span>
             </Link>
-            <Link
-              href="/companies/new"
-              className="btn-accent text-sm"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              企業追加
-            </Link>
+            <div className="flex items-center gap-3">
+              {session?.user ? (
+                <>
+                  <span className="text-sm text-white/70 hidden sm:block">
+                    {session.user.name || session.user.email}
+                  </span>
+                  <Link href="/companies/new" className="btn-accent text-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    企業追加
+                  </Link>
+                  <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
+                    <button
+                      type="submit"
+                      className="text-sm text-white/60 hover:text-white/90 transition-colors px-2 py-1"
+                    >
+                      ログアウト
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <Link href="/login" className="btn-accent text-sm">
+                  ログイン
+                </Link>
+              )}
+            </div>
           </div>
         </header>
         <main className="max-w-5xl mx-auto px-6 py-8 animate-page-in">

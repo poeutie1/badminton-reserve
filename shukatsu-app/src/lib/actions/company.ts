@@ -3,11 +3,20 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { encrypt } from "@/lib/crypto";
+import { auth } from "@/lib/auth";
+
+async function requireUserId(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  return session.user.id;
+}
 
 export async function createCompany(formData: FormData) {
+  const userId = await requireUserId();
   const rawPassword = (formData.get("password") as string) || "";
   const company = await prisma.company.create({
     data: {
+      userId,
       name: formData.get("name") as string,
       url: (formData.get("url") as string) || null,
       industry: (formData.get("industry") as string) || null,
@@ -27,6 +36,7 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(id: string, formData: FormData) {
+  const userId = await requireUserId();
   const rawPassword = (formData.get("password") as string) || "";
   const keepPassword = formData.get("keepPassword") === "1";
 
@@ -49,11 +59,12 @@ export async function updateCompany(id: string, formData: FormData) {
     data.encryptedPassword = rawPassword ? encrypt(rawPassword) : null;
   }
 
-  await prisma.company.update({ where: { id }, data });
+  await prisma.company.update({ where: { id, userId }, data });
   redirect(`/companies/${id}`);
 }
 
 export async function deleteCompany(id: string) {
-  await prisma.company.delete({ where: { id } });
+  const userId = await requireUserId();
+  await prisma.company.delete({ where: { id, userId } });
   redirect("/");
 }
