@@ -1,7 +1,7 @@
 // src/app/mypage/page.tsx
 "use client";
 import { useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+
 
 type Profile = {
   nickname: string;
@@ -95,13 +95,6 @@ export default function MyPage() {
 
       <button onClick={save} className="px-3 py-2 rounded bg-black text-white">
         保存
-      </button>
-
-      <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
-        className="px-3 py-2 rounded bg-red-500 text-white"
-      >
-        ログアウト
       </button>
 
       <style jsx>{`
