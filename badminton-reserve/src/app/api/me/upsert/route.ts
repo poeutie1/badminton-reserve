@@ -47,7 +47,7 @@ export async function POST() {
     };
     if (!cur.displayName && isNonEmpty(displayName))
       update.displayName = displayName;
-    if (!cur.avatarUrl && avatarUrl) update.avatarUrl = avatarUrl;
+    if (avatarUrl && cur.avatarUrl !== avatarUrl) update.avatarUrl = avatarUrl;
     if (!cur.lineUserId && lineUserId) update.lineUserId = lineUserId;
 
     if (Object.keys(update).length > 1) {
