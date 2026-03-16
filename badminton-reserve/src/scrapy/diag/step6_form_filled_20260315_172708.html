@@ -1,0 +1,274 @@
+<!DOCTYPE html><html lang="ja"><!--<![endif]--><head id="ctl00_Head1"><meta charset="utf-8"><title>
+	豊島区公共施設予約システム
+</title><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Cache-Control" content="no-cache"><meta http-equiv="Expires" content="-1"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="/toshima/WebR/Content/css/font-awesome.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery-ui-1.11.2.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default_print.css?LastUpdDate=20180817" media="print" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/tooltipster.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery.remodal.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-1.11.1.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-ui-1.11.2.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/common.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.tooltipster.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.remodal.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.inputfocus.js?LastUpdDate=20180817"></script>
+	<!--[if lt IE 9]> 
+	<script src="/toshima/WebR/Scripts/html5.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/IE9.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/css3-mediaqueries.js?LastUpdDate=20180817"></script> 
+	<![endif]-->
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            unload_flg = 0;
+            
+            // 文字サイズ変更時のみスケール調整
+            
+        });
+	    $(document).on('close', '[data-remodal-id=logoutInfo]', function () {
+		    dialog_flg = 0;
+	    });
+	    $(document).on('close', '[data-remodal-id=loginInfo]', function () {
+		    dialog_flg = 0;
+	    });
+        $.ajaxSetup({
+            error: function (xhr, status, error) {
+                    var errorpage = 'https://www2.pf489.com/Toshima/WebR/Error/html/GenericError.html';
+                    if (errorpage) {
+                        dialog_flg = 1; // アンロードのメッセージを表示させない
+                        window.location.href = errorpage;
+                    }
+                }
+        });
+    </script>
+
+</head><body style="overflow-x: hidden;">
+  
+    <link href="/toshima/WebR/Content/css/WgR_ShousaiShinsei.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+	<script type="text/javascript">
+	    $(document).ready(function () {
+	        $('.breadcrumbs a').tooltipster({ position: 'bottom' });
+
+	        $(".spinner.hour").spinner({
+	            min: 0,
+	            max: 47
+	        });
+	        $(".spinner.min").spinner({
+	            min: 0,
+	            max: 59
+	        });
+            
+	        $(".spinner.ninzu").spinner({
+	            min: 0,
+	            max: 99999
+	        });
+
+	        $("#body").inputFocus();
+	        // トグルボタンフォーカス時のアウトライン調整
+	        $(".toggle li > input").on("focus", function () {
+	            if (this.parentNode.tagName == "LI") {
+	                var childElem = this.parentNode.childNodes;
+	                if (childElem[0].tagName == "INPUT" && childElem[1].tagName == "LABEL") {
+	                    $(childElem[0]).css("width", childElem[1].offsetWidth - 1);
+	                    $(childElem[0]).css("height", childElem[1].offsetHeight - 2);
+	                }
+	            }
+	        });
+
+            
+	    });
+	</script>
+
+    <style type="text/css">
+        
+        
+        /**** 文字サイズ変更時のみスケール調整 ****/
+        
+    </style>
+    
+
+
+<form action="/toshima/WebR/Yoyaku/WgR_ShousaiShinsei" id="form1" method="post" autocomplete="off"><input name="__RequestVerificationToken" type="hidden" value="AzC0eSBAgYsuFbpzzi9v9El0wcaCSw6dwHSmclW6gJwNdJLUAzvNTonP3St0y+AJnNJSY1pUDpAtjH6nPRnQL/2zbSC4suw76gE6aHkY0ms04EAWLUtyp3NpSRoGt1QYTcguWgLhlX4m5bkSzjWVXepTfUI=">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="">
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="">
+<div id="wrap" class="remodal-bg">
+	<div id="wrap_head">
+        
+        <div id="head">
+        
+        <h1><span class="city">豊島区</span><span class="title">公共施設予約システム</span></h1>
+        <p class="user">ＳＢＣ さん</p>
+			  <ul>
+                  <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li><li class="logout"><a href="#logoutConfirm">ログアウト</a></li>
+			  </ul>
+			  <div class="dock_nav">
+				  <a href="#nav">メニュー</a>
+			  </div>
+		  </div>
+	</div>
+  <div id="body">
+    
+		<ul class="breadcrumbs clearfix">
+            
+	        <li><a href="javascript:__doPostBack('menu','')" class="tooltipstered">メニュー</a></li>
+            <li><a href="javascript:__doPostBack('history','WgR_ShisetsuKensaku')" class="tooltipstered">施設の検索</a></li>
+            <li><a href="javascript:__doPostBack('history','WgR_ShisetsubetsuAkiJoukyou')" class="tooltipstered">施設別空き状況</a></li>
+            <li><a href="javascript:__doPostBack('history','WgR_JikantaibetsuAkiJoukyou')" class="tooltipstered">時間帯別空き状況</a></li>
+            <li class="current"><span>詳細申請</span></li>
+            <li>申込確認</li>
+            <li>申込完了</li>
+            
+		</ul>
+        
+	    <div class="content_head">
+		    <h2>予約申込 詳細申請</h2>
+            <p class="desc">以下の詳細申請項目を全て申請して、「確定」ボタンを押してください。</p>
+	    </div>
+	    <div class="content_body">
+        
+	    	<div class="item_head clearfix">
+				<dl class="shisetsu clearfix">
+					<dt>施設</dt>
+					<dd>ふるさと千川館　ふるさと千川の部屋　</dd>
+				</dl>
+				<dl class="use-date clearfix">
+					<dt>利用日</dt>
+					<dd>2026/4/6(月)</dd>
+				</dl>
+                
+				<dl class="use-time clearfix">
+					<dt>時間帯</dt>
+					<dd>18:30～21:30</dd>
+				</dl>
+                
+			</div>
+			<div class="item_body">
+                
+				<div id="ninzu" class="item ninzu required clearfix">
+					<h4>利用人数<span>必須</span></h4>
+                    <p>利用可能人数は5～36人です。</p>
+					<dl>
+						<dd><span class="ui-spinner ui-widget ui-widget-content ui-corner-all"><input type="number" class="spinner ninzu ui-spinner-input" name="spinnerNinzu" value="" aria-valuemin="0" aria-valuemax="99999" autocomplete="off" role="spinbutton"><a class="ui-spinner-button ui-spinner-up ui-corner-tr ui-button ui-widget ui-state-default ui-button-text-only" tabindex="-1" role="button"><span class="ui-button-text"><span class="ui-icon ui-icon-triangle-1-n">▲</span></span></a><a class="ui-spinner-button ui-spinner-down ui-corner-br ui-button ui-widget ui-state-default ui-button-text-only" tabindex="-1" role="button"><span class="ui-button-text"><span class="ui-icon ui-icon-triangle-1-s">▼</span></span></a></span><span class="unit">人</span></dd>
+					</dl>
+				</div>
+                
+				<div id="mokuteki" class="item clearfix mokuteki required">
+					<h4>使用目的<span>必須</span></h4>
+					<p>施設を使用する目的を選んでください。</p>
+                    
+					<ul class="toggle horizontal">
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki002" value="002"><label for="radioMokuteki002" class="switch-on">会議（音響機器・マイク等不可）</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki004" value="004"><label for="radioMokuteki004" class="switch-on">研修</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki005" value="005"><label for="radioMokuteki005" class="switch-on">講座・ワークショップ</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki006" value="006"><label for="radioMokuteki006" class="switch-on">講演会・上映会</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki008" value="008"><label for="radioMokuteki008" class="switch-on">趣味・教養（文化）</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki017" value="017"><label for="radioMokuteki017" class="switch-on">演劇</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki018" value="018"><label for="radioMokuteki018" class="switch-on">演劇（台本読み合わせ）</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki019" value="019"><label for="radioMokuteki019" class="switch-on">軽スポーツ・軽運動</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki020" value="020"><label for="radioMokuteki020" class="switch-on">舞踊・ダンス</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki021" value="021"><label for="radioMokuteki021" class="switch-on">日本舞踊</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki022" value="022"><label for="radioMokuteki022" class="switch-on">着付け</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki027" value="027"><label for="radioMokuteki027" class="switch-on">式典（飲食不可）</label></li>
+                    <li><input type="radio" name="radioMokuteki" id="radioMokuteki030" value="030"><label for="radioMokuteki030" class="switch-on">懇親会（飲食不可）</label></li>
+                    
+					</ul>
+                    
+				</div>
+                
+				<div id="shousai" class="item clearfix yoto required">
+					<h4>申請項目<span>必須</span></h4>
+					<p>行事の名称及び内容をお書きください。</p>
+					<input type="text" name="txtYykShousai" value="" maxlength="40">
+				</div>
+                
+				<div id="contents1" class="item clearfix custom required">
+					<h4>申込者氏名<span>必須</span></h4>
+					<p>実際に申込申請の作業をしている方の氏名をお書きください。</p><input type="text" name="txtContents1" value="" maxlength="100">
+				</div>
+                
+				<div id="contents2" class="item clearfix custom required">
+					<h4>今月の利用回数<span>必須</span></h4>
+					<p>今月の利用回数をお書きください（予約申込済のものを含む）</p><input type="text" name="txtContents2" value="" maxlength="100">
+				</div>
+                
+				<div id="contents3" class="item clearfix custom required">
+					<h4>連絡事項<span>必須</span></h4>
+					<p>連絡事項がある場合、ご記入ください。特にない場合は、「なし」とご記入ください。</p><input type="text" name="txtContents3" value="" maxlength="100">
+				</div>
+                
+			</div>
+            
+	    </div>
+
+  </div>
+  
+	<div class="navbar">
+		<ul>
+            <li class="next"><a href="javascript:__doPostBack('next','')" class="btnBlue">確定</a></li>
+			<li class="prev"><a href="javascript:__doPostBack('back','')" class="btnBlue">前に戻る</a></li>
+			<li class="menu"><a href="javascript:__doPostBack('menu','')" class="btnBlue">メニュー</a></li>
+		</ul>
+	</div>
+
+</div>
+
+
+
+<!-- メッセージダイアログ -->
+
+
+<script type="text/javascript">
+    
+    function showMessageDialog(style,title,message) {
+        showMessageDialog(style,title,message,"msgconfirm",null);
+    }
+    function showMessageDialog(style,title,message,confirmCmd,confirmArg) {
+        $("#messageDlg").removeClass().addClass('remodal ' + style);
+        $("#messageDlg h2").text(title);
+        $("#messageDlg div p").html(message);
+        $("#messageDlg ul").remove();
+        if (style=="notice") {
+            $("#messageDlg div").after(
+                "<ul class=\"clearfix\">" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-confirm\" value=\"はい\" onclick=\"__doPostBack('"+confirmCmd+"','"+confirmArg+"');\"></li>" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-cancel\" value=\"いいえ\" onclick=\"location.href='#';\"></li>" +
+                "</ul>");
+            beforeSubmit('', '#messageDlg .remodal-confirm');
+        }
+        location.href='#messageDlg';
+    };
+</script>
+
+
+
+
+   <script type="text/javascript">       beforeSubmit("", "#btnConfirm");</script>
+</form>
+
+
+<a class="blank tooltipstered"></a><div class="remodal-overlay"><div class="remodal info" data-remodal-id="SesseionTimeoutWarn" style="visibility: visible;">
+	<h2>メッセージ</h2>
+	<div><p>セッションタイムアウトまであと0分です。</p></div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal nav" data-remodal-id="nav" style="visibility: visible;">
+	<h2>メニュー</h2>
+    
+        <p class="user">ＳＢＣ さん</p>
+    
+	<ul>
+        <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li><li class="logout"><a href="#logoutConfirm">ログアウト</a></li>
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal" id="messageDlg" data-remodal-id="messageDlg" style="visibility: visible;">
+    <h2></h2>
+    <div class="clearfix"><p></p>
+         このダイアログは右上の×で閉じることができます。<br>
+        （ブラウザの戻るボタンは使用しないでください。）
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal notice logoutConfirm" data-remodal-id="logoutConfirm" style="visibility: visible;">
+    <h2>確認</h2>
+    <div class="clearfix"><p>ログアウトします。よろしいですか？</p></div>
+    <ul class="clearfix">
+		<li><input type="button" id="btnConfirm" class="btnBlue remodal-confirm" value="はい" onclick="__doPostBack('logout','')"></li>
+		<li><input type="button" class="btnGray remodal-cancel" value="いいえ" onclick="removeWaitAnc('a[href=\'#logoutConfirm\']')"></li>
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="tooltipster-base blank tooltipster-fade tooltipster-fade-show" style="transition-duration: 350ms; animation-duration: 350ms; top: 1490px; left: 0px;"><div class="tooltipster-content"></div><div class="tooltipster-arrow-top tooltipster-arrow" style="left:-10px;"><span style="border-color:rgba(0, 0, 0, 0);"></span></div></div></body></html>

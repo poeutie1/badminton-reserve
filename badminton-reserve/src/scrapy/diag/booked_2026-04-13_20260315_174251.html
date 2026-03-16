@@ -1,0 +1,216 @@
+<!DOCTYPE html><html lang="ja"><!--<![endif]--><head id="ctl00_Head1"><meta charset="utf-8"><title>
+	豊島区公共施設予約システム
+</title><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Cache-Control" content="no-cache"><meta http-equiv="Expires" content="-1"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="/toshima/WebR/Content/css/font-awesome.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery-ui-1.11.2.min.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/default_print.css?LastUpdDate=20180817" media="print" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/tooltipster.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <link href="/toshima/WebR/Content/css/jquery.remodal.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-1.11.1.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery-ui-1.11.2.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/common.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.tooltipster.min.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.remodal.js?LastUpdDate=20180817"></script>
+    <script type="text/javascript" src="/toshima/WebR/Scripts/jquery.inputfocus.js?LastUpdDate=20180817"></script>
+	<!--[if lt IE 9]> 
+	<script src="/toshima/WebR/Scripts/html5.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/IE9.js?LastUpdDate=20180817"></script>
+	<script src="/toshima/WebR/Scripts/css3-mediaqueries.js?LastUpdDate=20180817"></script> 
+	<![endif]-->
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            unload_flg = 0;
+            
+            // 文字サイズ変更時のみスケール調整
+            
+        });
+	    $(document).on('close', '[data-remodal-id=logoutInfo]', function () {
+		    dialog_flg = 0;
+	    });
+	    $(document).on('close', '[data-remodal-id=loginInfo]', function () {
+		    dialog_flg = 0;
+	    });
+        $.ajaxSetup({
+            error: function (xhr, status, error) {
+                    var errorpage = 'https://www2.pf489.com/Toshima/WebR/Error/html/GenericError.html';
+                    if (errorpage) {
+                        dialog_flg = 1; // アンロードのメッセージを表示させない
+                        window.location.href = errorpage;
+                    }
+                }
+        });
+    </script>
+
+</head><body class="yoyakuKanryou" style="overflow-x: hidden;">
+  
+
+<link href="/toshima/WebR/Content/css/WgR_YoyakuKakunin.css?LastUpdDate=20180817" rel="stylesheet" type="text/css">
+<link href="/toshima/WebR/Content/css/WgR_YoyakuKakunin_Print.css?LastUpdDate=20180817" media="print" rel="stylesheet" type="text/css">
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('.breadcrumbs a').tooltipster({ position: 'bottom' });
+        // アンロード時のダイアログ対象外、二重送信
+		beforeSubmit(".equip dt a,.sametime dt a","");
+    });
+    
+    function openMapWindow() {
+    window.open('https://www2.wagmap.jp/toshima/ApiDetail/LinkToMap?mid=3&mtl=47&fldno=14&fid=116080','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=600');
+    }
+    
+</script>
+
+    <style type="text/css">
+        
+        
+        /**** 文字サイズ変更時のみスケール調整 ****/
+        
+    </style>
+    
+
+
+<form action="/toshima/WebR/Yoyaku/WgR_YoyakuKanryou" id="form1" method="post" autocomplete="off"><input name="__RequestVerificationToken" type="hidden" value="3tnfaBfa/+KRQKs/NHszDFEn09e6kp84VjbOgijL0yrhANIBBj/LE+JfuqLmssTGCT9MzsKge7pUCdapuMxvR0I/oMnpIJNVRyleju3YVE/12ttY7d+opoOXJTNOzvPusgCNKd0Y6+OTIxUN0+6Hbxsdl3A=">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="">
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="">
+<div id="wrap" class="remodal-bg">
+	<div id="wrap_head">
+        
+        <div id="head">
+        
+        <h1><span class="city">豊島区</span><span class="title">公共施設予約システム</span></h1>
+        <p class="user">ＳＢＣ さん</p>
+			  <ul>
+                  <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li><li class="logout"><a href="#logoutConfirm">ログアウト</a></li>
+			  </ul>
+			  <div class="dock_nav">
+				  <a href="#nav">メニュー</a>
+			  </div>
+		  </div>
+	</div>
+  <div id="body">
+    
+<ul class="breadcrumbs clearfix">
+    
+    <li><a href="javascript:__doPostBack('menu','')" class="tooltipstered">メニュー</a></li>
+    <li><a href="javascript:__doPostBack('history','WgR_ShisetsuKensaku')" class="tooltipstered">施設の検索</a></li>
+    <li><a href="javascript:__doPostBack('history','WgR_ShisetsubetsuAkiJoukyou')" class="tooltipstered">施設別空き状況</a></li>
+    <li><a href="javascript:__doPostBack('history','WgR_JikantaibetsuAkiJoukyou')" class="tooltipstered">時間帯別空き状況</a></li>
+    <li>詳細申請</li>
+    <li>申込確認</li>
+    <li class="current"><span>申込完了</span></li>
+    
+</ul>
+
+<div class="content_head">
+    <h2>予約申込 完了</h2>	
+    <p class="desc">申込を受付しました。</p>
+</div>
+<div class="content_body">
+
+    <div class="item_wrap_head clearfix">
+        <dl>
+            <dt>合計</dt>
+            
+            <dd>600<span>円</span></dd>
+            
+        </dl>
+        <ul>
+            <li class="print"><input type="button" class="btnBrown middle" value=" 申込内容を印刷" onclick="window.print();"></li><li class="map"><input type="button" class="btnGray middle" value=" 地図で場所を確認" onclick="openMapWindow(); return false;"></li>
+        </ul>
+    </div>
+    <div>
+        
+        <div class="item_wrap finished">
+            <div class="item_head">
+                <h4>ふるさと千川館 ふるさと千川の部屋 </h4>
+            </div>
+            <div class="item clearfix">
+                <dl class="use-date">
+                    <dt>利用日</dt>
+                    <dd>2026/4/13(月)</dd>
+                </dl>
+                <dl class="use-time">
+                    <dt>時間帯</dt>
+                    <dd>18:30～21:30</dd>
+                </dl>
+                <dl class="price">
+                    <dt>施設使用料</dt>
+                    <dd>600<span>円</span></dd>
+                </dl>
+                <dl class="price">
+                    <dt>備品使用料</dt>
+                    <dd>－</dd>
+                </dl>
+                
+                <dl class="contents">
+                    <dt>申請内容</dt>
+                    <dd>利用目的「軽スポーツ・軽運動　バドミントン」、利用人数「20人」、申込者氏名「三廉康平」、今月の利用回数「０」、連絡事項「なし」、使用料区分「通常料金」</dd>
+                </dl>
+                
+            </div>
+        </div>
+        
+    </div>
+    
+    <div class="info">
+        <h4>お知らせ</h4>
+        
+        <dl>
+            <dt>ふるさと千川館</dt>
+            <dd>ふるさと千川館では、近隣住民の迷惑になる行為は禁止しておりますが、特に夜間１８時以降は、近隣住民の方々の生活もございますので、大きな音や大声を出すようなご利用は行わないでください。<br><br>ふるさと千川館のご利用方法等につきましては、以下のリンクをご確認ください。<a href="https://www.city.toshima.lg.jp/069/kurashi/kuminkatsudo/007314/003516/furusatosenkawa.html">ふるさと千川館のご利用方法等について</a></dd>
+        </dl>
+        
+    </div>
+    
+    <div class="notice">
+        <h4>注意事項</h4>
+        
+        <dl>
+            <dt>ふるさと千川館 ふるさと千川の部屋</dt>
+            <dd>利用料の支払いはご利用の7日前までに済ませてください。<br>利用時間・利用人員をお守りください。利用時間には、会場の準備片付けを含みます。<br>会場のセッティング変更・現状復帰は利用者の皆さまで行います。<br>個人利用および政治・宗教・営利活動のための利用はできません。<br>施設は禁煙です。<br>音響設備や楽器演奏が可能な施設においても他の利用者の迷惑にならないよう音量に気を付けてください。<br>利用終了の際、施設等を原状に回復してください。<br>払い込みの利用料は、お返しできません。ただし、次の場合はお返しします。<br>①利用者の責任でない理由により利用できないとき。（全額還付）<br>②利用日の7日以前に、利用取消の手続きを来館しおこなったとき。（半額還付） ※還付には領収書が必要です。</dd>
+        </dl>
+        
+    </div>
+    
+</div>
+
+  </div>
+  
+<div class="navbar">
+	<ul>
+        
+		<li class="menu"><a href="javascript:__doPostBack('menu','')" class="btnBlue">メニュー</a></li>
+        <li class="credit"><a href="javascript:__doPostBack('next','')" class="btnBlue">クレジット決済画面</a></li>
+	</ul>
+</div>
+
+</div>
+
+
+
+
+
+   <script type="text/javascript">       beforeSubmit("", "#btnConfirm");</script>
+</form>
+
+
+<a class="blank tooltipstered"></a><div class="remodal-overlay"><div class="remodal info" data-remodal-id="SesseionTimeoutWarn" style="visibility: visible;">
+	<h2>メッセージ</h2>
+	<div><p>セッションタイムアウトまであと0分です。</p></div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal nav" data-remodal-id="nav" style="visibility: visible;">
+	<h2>メニュー</h2>
+    
+        <p class="user">ＳＢＣ さん</p>
+    
+	<ul>
+        <li class="message"><a href="javascript:__doPostBack('message','')">メッセージ</a></li><li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li><li class="tebiki"><a href="javascript:void(0)" onclick="window.open('https://www2.pf489.com/toshima/help/webR/index.asp','','toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=800,height=700'); return false;">ご利用の手引き</a></li><li class="logout"><a href="#logoutConfirm">ログアウト</a></li>
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal notice logoutConfirm" data-remodal-id="logoutConfirm" style="visibility: visible;">
+    <h2>確認</h2>
+    <div class="clearfix"><p>ログアウトします。よろしいですか？</p></div>
+    <ul class="clearfix">
+		<li><input type="button" id="btnConfirm" class="btnBlue remodal-confirm" value="はい" onclick="__doPostBack('logout','')"></li>
+		<li><input type="button" class="btnGray remodal-cancel" value="いいえ" onclick="removeWaitAnc('a[href=\'#logoutConfirm\']')"></li>
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="tooltipster-base blank tooltipster-fade tooltipster-fade-show" style="transition-duration: 350ms; animation-duration: 350ms; top: 1442px; left: 0px;"><div class="tooltipster-content"></div><div class="tooltipster-arrow-top tooltipster-arrow" style="left:-10px;"><span style="border-color:rgba(0, 0, 0, 0);"></span></div></div></body></html>
