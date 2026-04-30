@@ -25,7 +25,7 @@ jobs:
           playwright install-deps chromium
 
       - name: Create .env
-        working-directory: src/scrapy
+        working-directory: badminton-reserve/src/scrapy
         run: |
           cat <<EOF > .env
           LOGIN_ID=${{ secrets.RESERVE_LOGIN_ID }}
@@ -39,7 +39,7 @@ jobs:
           EOF
 
       - name: Run auto_reserve
-        working-directory: src/scrapy
+        working-directory: badminton-reserve/src/scrapy
         run: python auto_reserve.py --headless
 
       - name: Upload diagnostics
@@ -47,5 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: diag-${{ github.run_id }}
-          path: src/scrapy/diag/
+          path: badminton-reserve/src/scrapy/diag/
           retention-days: 14
