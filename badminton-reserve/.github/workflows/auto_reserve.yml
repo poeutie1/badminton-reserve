@@ -1,0 +1,51 @@
+name: Auto Reserve Badminton
+
+on:
+  schedule:
+    # 毎月1日 9:00 JST (= 0:00 UTC)
+    - cron: '0 0 1 * *'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  reserve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright python-dotenv
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Create .env
+        working-directory: src/scrapy
+        run: |
+          cat <<EOF > .env
+          LOGIN_ID=${{ secrets.RESERVE_LOGIN_ID }}
+          LOGIN_PASSWORD=${{ secrets.RESERVE_LOGIN_PASSWORD }}
+          NINZU=20
+          MOKUTEKI=バドミントン
+          SHINSEI=バドミントン
+          SHIMEI=三廉康平
+          RIYOUKAI=なし
+          RENRAKU=なし
+          EOF
+
+      - name: Run auto_reserve
+        working-directory: src/scrapy
+        run: python auto_reserve.py --headless
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-${{ github.run_id }}
+          path: src/scrapy/diag/
+          retention-days: 14
