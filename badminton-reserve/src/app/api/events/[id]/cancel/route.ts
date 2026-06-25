@@ -67,8 +67,14 @@ export async function POST(_req: Request, ctx: RouteContext) {
 
     title = data.title ?? "";
     const date = toDate(data.date);
-    const baseWhen = date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-    whenLabel = data.time ? `${baseWhen} ${data.time}` : baseWhen;
+    const datePart = date.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+    });
+    whenLabel = data.time ? `${datePart} ${data.time}` : datePart;
 
     let participants = toStringArray(data.participants);
     let waitlist = toStringArray(data.waitlist);

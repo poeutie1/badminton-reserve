@@ -42,11 +42,12 @@ export async function POST(_req: Request, ctx: RouteContext) {
 
     const participants = toStringArray(raw?.participants);
     const waitlist = toStringArray(raw?.waitlist);
+    const guestCount = Array.isArray(raw?.guests) ? raw.guests.length : 0;
 
     // すでにどちらかにいるなら何もしない
     if (participants.includes(userId) || waitlist.includes(userId)) return;
 
-    if (participants.length < capacity) {
+    if ((participants.length + guestCount) < capacity) {
       participants.push(userId);
     } else {
       waitlist.push(userId);

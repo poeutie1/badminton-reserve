@@ -14,6 +14,9 @@ import PromotionBanner, {
 } from "@/app/events/_components/PromotionBanner";
 import WaitlistLine from "@/app/events/_components/WaitlistLine";
 import DeleteEventButton from "@/app/events/_components/DeleteEventButton";
+import EditCapacityButton from "@/app/events/_components/EditCapacityButton";
+import AddGuestButton from "@/app/events/_components/AddGuestButton";
+import RemoveGuestButton from "@/app/events/_components/RemoveGuestButton";
 
 import { FieldValue } from "firebase-admin/firestore";
 import type {
@@ -35,6 +38,13 @@ type UserProfile = {
   avatarUrl?: string | null;
 };
 
+type GuestInfo = {
+  id: string;
+  name: string;
+  gender?: string;
+  years?: number;
+};
+
 type EventRow = {
   id: string;
   title: string;
@@ -42,6 +52,7 @@ type EventRow = {
   capacity: number;
   participants: string[];
   waitlist: string[];
+  guests: GuestInfo[];
   location?: string;
   time?: string;
   joined: boolean;
@@ -197,6 +208,7 @@ export default async function EventsPage({ params }: Props) {
     capacity: number;
     participants: string[];
     waitlist: string[];
+    guests: GuestInfo[];
     location?: string;
     time?: string;
     joined: boolean;
@@ -244,6 +256,18 @@ export default async function EventsPage({ params }: Props) {
     const date = toDate(data.date);
     const capacity = typeof data.capacity === "number" ? data.capacity : 0;
 
+    // ゲスト情報を読み取り
+    const guests: GuestInfo[] = Array.isArray(raw.guests)
+      ? (raw.guests as Array<Record<string, unknown>>)
+          .filter((g) => typeof g?.id === "string" && typeof g?.name === "string")
+          .map((g) => ({
+            id: g.id as string,
+            name: g.name as string,
+            gender: typeof g.gender === "string" ? g.gender : undefined,
+            years: typeof g.years === "number" ? g.years : undefined,
+          }))
+      : [];
+
     return {
       id: d.id,
       title: data.title ?? "",
@@ -251,13 +275,14 @@ export default async function EventsPage({ params }: Props) {
       capacity,
       participants: p,
       waitlist: w,
+      guests,
       location: data.location,
       time: data.time,
       joined:
         Boolean(userId) &&
         (p.includes(String(userId)) || w.includes(String(userId))),
       inWaitlist: Boolean(userId) && w.includes(String(userId)),
-      full: p.length >= capacity,
+      full: (p.length + guests.length) >= capacity,
     };
   });
   // 非同期の修復は待たない
@@ -392,11 +417,17 @@ export default async function EventsPage({ params }: Props) {
               <span className="group-open:hidden">▼参加者一覧</span>
               <span className="hidden group-open:inline">閉じる</span>
               <span className="text-black dark:text-gray-100">
-                （参加: {ev.participants.length}/定員: {ev.capacity}
+                （参加: {ev.participants.length + ev.guests.length}/定員: {ev.capacity}
                 {ev.waitlistProfiles.length
                   ? `・待機 ${ev.waitlistProfiles.length}`
                   : ""}
                 ）
+                {isAdmin && (
+                  <EditCapacityButton
+                    eventId={ev.id}
+                    currentCapacity={ev.capacity}
+                  />
+                )}
               </span>
             </summary>
 
@@ -407,7 +438,42 @@ export default async function EventsPage({ params }: Props) {
                 adminEventId={isAdmin ? ev.id : undefined} // ★ 追加
               />
 
-              {/* ←ココを追加：待機者がいるときだけ、ラベル付き区切り線 */}
+              {/* ゲスト参加者 */}
+              {ev.guests.length > 0 && (
+                <div className="space-y-1">
+                  {ev.guests.map((g) => {
+                    const tags: string[] = [];
+                    if (g.gender && g.gender !== "未回答") tags.push(g.gender);
+                    if (typeof g.years === "number") tags.push(`${g.years}年`);
+                    const label = tags.length
+                      ? `${g.name}（${tags.join("・")}）`
+                      : g.name;
+                    return (
+                      <div
+                        key={g.id}
+                        className="flex items-center gap-1 text-sm"
+                      >
+                        <span className="inline-block rounded bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 text-xs px-1">
+                          ゲスト
+                        </span>
+                        <span>{label}</span>
+                        {isAdmin && (
+                          <RemoveGuestButton
+                            eventId={ev.id}
+                            guestId={g.id}
+                            guestName={g.name}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 管理者: ゲスト追加 */}
+              {isAdmin && <AddGuestButton eventId={ev.id} />}
+
+              {/* 待機者がいるときだけ、ラベル付き区切り線 */}
               {ev.waitlistProfiles.length > 0 && (
                 <>
                   <LabeledDivider

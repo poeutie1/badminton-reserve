@@ -115,8 +115,14 @@ async function handleAdminCancel(eventId: string, req: Request) {
     const data = snap.data() ?? {};
     title = (data.title as string) ?? "";
     const d = toDate(data.date);
-    const baseWhen = d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-    whenLabel = data.time ? `${baseWhen} ${data.time as string}` : baseWhen;
+    const datePart = d.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+    });
+    whenLabel = data.time ? `${datePart} ${data.time as string}` : datePart;
 
     let participants = toStrArr(data.participants);
     let waitlist = toStrArr(data.waitlist);

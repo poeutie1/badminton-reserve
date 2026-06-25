@@ -33,7 +33,8 @@ WEEKDAY_PRIORITY = [0, 1, 2, 3]
 DRY_RUN = False
 USER_DATA_DIR = Path(__file__).parent / "udata"
 LOG_DIR = Path(__file__).parent / "diag"
-DEBUG = True
+# 診断レベル: 0=なし, 1=エラー時のみ, 2=全ステップ
+DIAG_LEVEL = 1
 
 # ====== .env ======
 load_dotenv(Path(__file__).parent / ".env")
@@ -49,18 +50,19 @@ WEEKDAY_JA = ["月", "火", "水", "木", "金", "土", "日"]
 
 # ====== ユーティリティ ======
 def debug(msg: str):
-    if DEBUG:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-def save_diag(page, label: str):
-    if not DEBUG:
+def save_diag(page, label: str, level: int = 2):
+    """診断情報を保存。level <= DIAG_LEVEL の場合のみ実行。"""
+    if level > DIAG_LEVEL:
         return
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         page.screenshot(path=str(LOG_DIR / f"{label}_{ts}.png"), full_page=True)
-        (LOG_DIR / f"{label}_{ts}.html").write_text(page.content(), encoding="utf-8")
+        if DIAG_LEVEL >= 2:
+            (LOG_DIR / f"{label}_{ts}.html").write_text(page.content(), encoding="utf-8")
         debug(f"[diag] saved {label}_{ts}")
     except Exception as exc:
         debug(f"[diag] failed: {exc}")
@@ -104,16 +106,18 @@ def get_week_number(d: datetime) -> int:
 def build_candidate_days(year: int, month: int, booked_weeks: set[int]) -> list[datetime]:
     """
     曜日優先順位(月→火→水→木)×週分散で候補日リストを生成。
+    週の優先順位: 第3週→第4週→第5週→第2週→第1週（後半週が競合少ない傾向）。
     既に予約済みの週はスキップ。
     """
+    week_priority = [3, 4, 5, 2, 1]
     candidates = []
     for weekday in WEEKDAY_PRIORITY:
         days = get_weekdays_in_month(year, month, weekday)
-        # 週番号順（第1週→第2週→…）、既予約週はスキップ
-        for d in days:
-            wn = get_week_number(d)
-            if wn not in booked_weeks:
-                candidates.append(d)
+        days_by_week = {get_week_number(d): d for d in days}
+        for wn in week_priority:
+            if wn in booked_weeks or wn not in days_by_week:
+                continue
+            candidates.append(days_by_week[wn])
     return candidates
 
 
@@ -131,7 +135,7 @@ def login(page):
     debug("[login] ログインページへ遷移")
     page.evaluate("__doPostBack('login','')")
     page.wait_for_load_state("domcontentloaded")
-    page.wait_for_timeout(500)
+    page.wait_for_selector("#userID", timeout=5000)
     save_diag(page, "step1_login_page")
 
     # ID/PW 入力（実サイトのセレクター）
@@ -142,33 +146,35 @@ def login(page):
     # ログインボタンクリック
     page.locator("a.btnBlue:has-text('ログイン')").click()
     page.wait_for_load_state("domcontentloaded")
-    page.wait_for_timeout(500)
+    page.wait_for_selector("a:has-text('ログアウト')", timeout=10000)
 
-    # ログイン確認
-    if page.locator("a:has-text('ログアウト')").count():
-        debug("[login] ログイン成功")
-        save_diag(page, "step2_logged_in")
-    else:
-        save_diag(page, "login_fail")
-        raise RuntimeError("ログインに失敗しました")
+    debug("[login] ログイン成功")
+    save_diag(page, "step2_logged_in")
+
+
+def is_logged_in(page) -> bool:
+    """現在のページでログイン状態を確認"""
+    try:
+        return page.locator("a:has-text('ログアウト')").count() > 0
+    except Exception:
+        return False
 
 
 # ====== Step 2: 施設選択（ふるさと千川館 → 多目的ホール） ======
 def select_facility(page):
     # ModeSelect に戻る（ログイン後のページから）
-    if "#category_18" not in (page.content() or ""):
+    if not page.locator("#category_18").count():
         page.goto(BASE_URL, wait_until="domcontentloaded")
-        page.wait_for_timeout(300)
 
     # カテゴリ「ふるさと千川館」(#category_18) をクリック
     debug("[facility] ふるさと千川館 を選択")
     cat_btn = page.locator("#category_18")
     if not cat_btn.count():
-        save_diag(page, "category_not_found")
+        save_diag(page, "category_not_found", level=1)
         raise RuntimeError("カテゴリ『ふるさと千川館』が見つかりません")
     cat_btn.click()
     page.wait_for_load_state("domcontentloaded")
-    page.wait_for_timeout(500)
+    page.wait_for_selector("#shisetsutbl", timeout=5000)
     save_diag(page, "step3_facility_list")
 
     # 施設一覧 (#shisetsutbl) が表示された場合 → 多目的ホールにチェック
@@ -180,17 +186,15 @@ def select_facility(page):
             checkbox = page.locator("#checkShisetsu116080")
             if checkbox.count() and not checkbox.is_checked():
                 checkbox_label.click()
-                page.wait_for_timeout(200)
             debug("[facility] 多目的ホール チェック済み")
         else:
             # フォールバック: テキストで探す
             labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
             if labels.count():
                 labels.first.click()
-                page.wait_for_timeout(200)
                 debug("[facility] 多目的ホール チェック済み (fallback)")
             else:
-                save_diag(page, "room_not_found")
+                save_diag(page, "room_not_found", level=1)
                 raise RuntimeError("多目的ホールが見つかりません")
 
         # 「次へ進む」ボタンをクリック
@@ -213,7 +217,6 @@ def click_next_button(page):
         if btn.count():
             btn.first.click()
             page.wait_for_load_state("domcontentloaded")
-            page.wait_for_timeout(300)
             return True
     debug("[next] 次へボタンが見つかりません")
     return False
@@ -260,7 +263,7 @@ def set_display_period_one_month(page, start_date: datetime):
         if btn.count():
             btn.first.click()
             page.wait_for_load_state("domcontentloaded")
-            page.wait_for_timeout(500)
+            page.wait_for_selector("table.calendar.horizon.toggle", timeout=5000)
             debug(f"[calendar] 表示期間を1ヶ月に設定: {val}")
             return
     debug("[calendar] 表示ボタンが見つかりません")
@@ -291,46 +294,49 @@ def navigate_to_month(page, target: datetime, max_hops: int = 6):
         else:
             page.evaluate("__doPostBack('period','prev')")
         page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(300)
+        page.wait_for_selector("table.calendar.horizon.toggle", timeout=5000)
         have = get_calendar_header_year_month(page)
         hops += 1
     debug(f"[calendar] target={want} now={have} hops={hops}")
     return have == want
 
 
-def find_available_tuesday(page, tuesdays: list[datetime]) -> datetime | None:
-    """カレンダーから空き(○/△)の火曜日を1つ見つける。
-    曜日はdatetimeのweekday()で判定する（カレンダーヘッダーに依存しない）。
+def read_all_availability(page, room_label: str) -> dict[str, str]:
+    """カレンダーから全日程の空きマークをJS一括読み取りで取得。
+    戻り値: {YYYYMMDD: マーク(○/△/×等)}
     """
-    table = page.locator("table.calendar.horizon.toggle")
-    if not table.count():
-        debug("[calendar] カレンダーテーブルが見つかりません")
-        return None
+    return page.evaluate("""(roomLabel) => {
+        const result = {};
+        document.querySelectorAll('input[name="checkdate"]').forEach(inp => {
+            const val = inp.value || '';
+            const ymd = val.substring(0, 8);
+            const id = inp.id;
+            const label = document.querySelector('label[for="' + id + '"]');
+            if (!label) return;
+            const row = inp.closest('tr');
+            if (!row) return;
+            const roomCell = row.querySelector('td.shisetsu, th.shisetsu');
+            const room = roomCell ? roomCell.textContent.trim() : '';
+            if (!room.includes(roomLabel) && !room.includes('多目的')) return;
+            const mark = (label.innerText || '').trim();
+            if (mark) result[ymd] = mark;
+        });
+        return result;
+    }""", room_label)
 
-    for tuesday in tuesdays:
-        ymd = tuesday.strftime("%Y%m%d")
-        # checkdate input の value が YYYYMMDD で始まるものを探す
-        inputs = page.locator(f'input[name="checkdate"][value^="{ymd}"]')
-        for i in range(inputs.count()):
-            el = inputs.nth(i)
-            # 多目的ホール行にあるか確認
-            try:
-                row = el.locator("xpath=ancestor::tr[1]")
-                row_txt = (row.first.text_content() or "") if row.count() else ""
-            except Exception:
-                row_txt = ""
-            if ROOM_LABEL not in row_txt and "多目的" not in row_txt:
-                continue
-            # ラベルのマーク確認
-            cid = el.get_attribute("id") or ""
-            lab = page.locator(f'label[for="{cid}"]')
-            if not lab.count():
-                continue
-            mark = _read_mark(lab.first)
-            debug(f"[calendar] {tuesday.strftime('%Y-%m-%d')}({WEEKDAY_JA[tuesday.weekday()]}) mark={mark or '(empty)'}")
-            if mark in OK_MARKS:
-                return tuesday
-    return None
+
+def scan_available_days(availability: dict[str, str], candidates: list[datetime]) -> list[datetime]:
+    """事前スキャン結果から空きありの候補日のみ返す"""
+    available = []
+    for d in candidates:
+        ymd = d.strftime("%Y%m%d")
+        mark = availability.get(ymd, "")
+        if mark in OK_MARKS:
+            available.append(d)
+            debug(f"[scan] {d.strftime('%Y-%m-%d')}({WEEKDAY_JA[d.weekday()]}) mark={mark} → 空きあり")
+        elif mark:
+            debug(f"[scan] {d.strftime('%Y-%m-%d')}({WEEKDAY_JA[d.weekday()]}) mark={mark} → スキップ")
+    return available
 
 
 def click_date_on_calendar(page, d: datetime) -> bool:
@@ -353,7 +359,6 @@ def click_date_on_calendar(page, d: datetime) -> bool:
         mark = _read_mark(lab.first)
         if mark in OK_MARKS:
             lab.first.click()
-            page.wait_for_timeout(300)
             debug(f"[calendar] {d.strftime('%Y-%m-%d')} をクリック (mark={mark})")
             return True
     debug(f"[calendar] {d.strftime('%Y-%m-%d')} は空きなし")
@@ -405,7 +410,7 @@ def go_to_timeslot_grid(page) -> bool:
         debug("[timeslot] 時間帯別画面へ遷移成功 (postback)")
         return True
     except Exception:
-        save_diag(page, "timeslot_fail")
+        save_diag(page, "timeslot_fail", level=1)
         debug("[timeslot] 時間帯別画面への遷移失敗")
         return False
 
@@ -435,7 +440,6 @@ def pick_time_slots(page) -> bool:
             return False
         if _check_time_cell(cell):
             picked += 1
-            page.wait_for_timeout(100)
 
     debug(f"[timeslot] picked={picked}/{len(WANTED_SLOTS)}")
     return picked == len(WANTED_SLOTS)
@@ -464,8 +468,6 @@ def _find_wanted_columns(table, wanted_norm: set) -> list[int]:
     for i in range(ths.count()):
         raw = ths.nth(i).text_content() or ""
         header_text = norm_wave(raw)
-        # ヘッダーテキストから時間範囲を抽出
-        # 例: "18:30～19:30" or "18:30~19:30"
         m = re.search(r"(\d{1,2})\s*[:：]\s*(\d{2})\s*[~～〜\-－–]\s*(\d{1,2})\s*[:：]\s*(\d{2})", header_text)
         if not m:
             continue
@@ -510,7 +512,7 @@ def fill_application_form(page) -> bool:
     """申請フォームに必要事項を入力。
     jQuery/JSで直接値をセットすることでオーバーレイ等の影響を回避する。
     """
-    page.wait_for_timeout(1000)
+    page.wait_for_selector("input[name='spinnerNinzu']", timeout=5000)
 
     # まずオーバーレイを閉じる（セッションタイムアウト警告等）
     page.evaluate("""() => {
@@ -521,7 +523,6 @@ def fill_application_form(page) -> bool:
             el.style.display = 'none';
         });
     }""")
-    page.wait_for_timeout(300)
 
     # 全フィールドをJavaScriptで一括設定
     result = page.evaluate("""({ninzu, mokuteki, name, count, note}) => {
@@ -637,7 +638,6 @@ def fill_application_form(page) -> bool:
     else:
         debug(f"[form] 一部入力失敗: {result}")
 
-    page.wait_for_timeout(500)
     save_diag(page, "step6_form_filled")
     return result.get("ok", False)
 
@@ -645,7 +645,6 @@ def fill_application_form(page) -> bool:
 # ====== 戻る操作 ======
 def go_back_to_calendar(page) -> bool:
     """時間帯選択画面からカレンダー画面へ戻る"""
-    # 「戻る」ボタンを探す
     for sel in [
         "a.btnGray:has-text('戻る')",
         "a:has-text('戻る')",
@@ -657,7 +656,6 @@ def go_back_to_calendar(page) -> bool:
         if btn.count():
             btn.first.click()
             page.wait_for_load_state("domcontentloaded")
-            page.wait_for_timeout(500)
             debug("[back] カレンダー画面へ戻りました")
             return True
 
@@ -665,7 +663,6 @@ def go_back_to_calendar(page) -> bool:
     try:
         page.evaluate("__doPostBack('prev','')")
         page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(500)
         debug("[back] カレンダー画面へ戻りました (postback)")
         return True
     except Exception:
@@ -675,27 +672,29 @@ def go_back_to_calendar(page) -> bool:
     return False
 
 
-# ====== 1日分の予約フロー ======
+def return_to_calendar_after_booking(page) -> bool:
+    """予約完了後にカレンダー画面へ復帰する。
+    施設選択からやり直す（最も確実で高速）。
+    """
+    try:
+        select_facility(page)
+        debug("[return] カレンダーに復帰（施設選択経由）")
+        return True
+    except Exception as e:
+        debug(f"[return] 施設選択からの復帰失敗: {e}")
+        return False
+
+
+# ====== 1日分の予約フロー（カレンダー画面から開始） ======
 def book_single_day(page, target: datetime) -> bool:
     """
-    1日分の予約を実行する。
-    施設選択 → カレンダー → 時間帯 → フォーム → 確定(or停止)。
+    1日分の予約を実行する（カレンダー画面上にいる前提）。
+    カレンダークリック → 時間帯 → フォーム → 確定 → 申込。
     成功したらTrue、失敗したらFalse。
     """
     ymd = target.strftime("%Y-%m-%d")
     weekday_name = WEEKDAY_JA[target.weekday()]
     debug(f"[book] === {ymd}({weekday_name}) を試行 ===")
-
-    # 毎回ログイン状態を確認
-    login(page)
-
-    # 施設選択
-    select_facility(page)
-
-    # カレンダー表示設定
-    target_month_start = datetime(target.year, target.month, 1)
-    set_display_period_one_month(page, target_month_start)
-    navigate_to_month(page, target)
 
     # カレンダーで日付クリック
     if not click_date_on_calendar(page, target):
@@ -727,11 +726,10 @@ def book_single_day(page, target: datetime) -> bool:
     try:
         page.evaluate("__doPostBack('next','')")
         page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(500)
         debug(f"[book] {ymd}({weekday_name}) 確定 → 申込確認画面")
     except Exception as e:
         debug(f"[book] 確定ボタン押下失敗: {e}")
-        save_diag(page, f"confirm_fail_{ymd}")
+        save_diag(page, f"confirm_fail_{ymd}", level=1)
         return False
 
     save_diag(page, f"step7_confirm_{ymd}")
@@ -745,11 +743,10 @@ def book_single_day(page, target: datetime) -> bool:
     try:
         page.evaluate("__doPostBack('next','')")
         page.wait_for_load_state("domcontentloaded")
-        page.wait_for_timeout(500)
         debug(f"[book] {ymd}({weekday_name}) 申込完了")
     except Exception as e:
         debug(f"[book] 申込ボタン押下失敗: {e}")
-        save_diag(page, f"submit_fail_{ymd}")
+        save_diag(page, f"submit_fail_{ymd}", level=1)
         return False
 
     save_diag(page, f"booked_{ymd}")
@@ -771,9 +768,17 @@ def book_days(page, target_month: datetime) -> list[datetime]:
 
     debug(f"[main] 対象月: {year}年{month}月 / 最大{MAX_DAYS}日")
 
+    # === セットアップ（1回だけ） ===
+    login(page)
+    select_facility(page)
+
+    # カレンダー表示設定
+    target_month_start = datetime(year, month, 1)
+    set_display_period_one_month(page, target_month_start)
+    navigate_to_month(page, target_month)
+
     while len(booked) < MAX_DAYS:
         candidates = build_candidate_days(year, month, booked_weeks)
-        # 既に試して失敗した日も除外
         tried_ymds = {d.strftime("%Y%m%d") for d in booked}
         candidates = [d for d in candidates if d.strftime("%Y%m%d") not in tried_ymds]
 
@@ -781,8 +786,16 @@ def book_days(page, target_month: datetime) -> list[datetime]:
             debug("[main] 候補日がもうありません")
             break
 
+        # === 事前スキャン: カレンダーの空き状況を一括取得 ===
+        availability = read_all_availability(page, ROOM_LABEL)
+        available_candidates = scan_available_days(availability, candidates)
+
+        if not available_candidates:
+            debug("[main] 空きのある候補日がありません")
+            break
+
         reserved_this_round = False
-        for day in candidates:
+        for day in available_candidates:
             ymd = day.strftime("%Y%m%d")
             if ymd in tried_ymds:
                 continue
@@ -796,10 +809,15 @@ def book_days(page, target_month: datetime) -> list[datetime]:
                       f"{day.strftime('%Y-%m-%d')}({WEEKDAY_JA[day.weekday()]}) 第{wn}週")
                 reserved_this_round = True
 
-                # トップに戻って次の予約へ
+                # カレンダーに復帰して次の予約へ
                 if len(booked) < MAX_DAYS:
-                    page.goto(BASE_URL, wait_until="domcontentloaded")
-                    page.wait_for_timeout(500)
+                    if not return_to_calendar_after_booking(page):
+                        # 復帰失敗: フルリセット
+                        debug("[main] カレンダー復帰失敗 → フルリセット")
+                        login(page)
+                        select_facility(page)
+                    set_display_period_one_month(page, target_month_start)
+                    navigate_to_month(page, target_month)
                 break  # 候補リストを再生成（booked_weeksが更新されたので）
 
         if not reserved_this_round:
@@ -820,11 +838,13 @@ def parse_args():
                         help="確認画面まで進んで申込せずに停止")
     parser.add_argument("--headless", action="store_true",
                         help="ヘッドレスモードで実行")
+    parser.add_argument("--diag-level", type=int, choices=[0, 1, 2], default=None,
+                        help="診断レベル (0=なし, 1=エラー時のみ, 2=全ステップ)")
     return parser.parse_args()
 
 
 def main():
-    global ROOM_LABEL
+    global ROOM_LABEL, DIAG_LEVEL
 
     if not (LOGIN_ID and LOGIN_PASSWORD):
         print("ERROR: .env に LOGIN_ID / LOGIN_PASSWORD を設定してください。", file=sys.stderr)
@@ -834,15 +854,20 @@ def main():
 
     global DRY_RUN
 
-    # テストモード: 4月分、ふるさと千川の部屋、1日だけ
+    # テストモード: 7月分、ふるさと千川の部屋、1日だけ
     if args.test:
         ROOM_LABEL = "ふるさと千川の部屋"
         MAX_DAYS = 1
-        target_month = datetime(2026, 4, 1)
-        debug("[main] テストモード: 4月分 / ふるさと千川の部屋 / 1日のみ")
+        target_month = datetime(2026, 7, 1)
+        debug("[main] テストモード: 7月分 / ふるさと千川の部屋 / 1日のみ")
+        if args.diag_level is None:
+            DIAG_LEVEL = 2  # テスト時はデフォルト全出力
     else:
         now = datetime.now()
         target_month = first_of_next_month(now)
+
+    if args.diag_level is not None:
+        DIAG_LEVEL = args.diag_level
 
     if args.dry_run:
         DRY_RUN = True
@@ -871,7 +896,7 @@ def main():
             if not args.headless:
                 input("終了するには Enter を押してください: ")
         except Exception as exc:
-            save_diag(page, "error")
+            save_diag(page, "error", level=1)
             print(f"ERROR: {exc}", file=sys.stderr)
             if not args.headless:
                 input("エラー発生。Enter で終了: ")
