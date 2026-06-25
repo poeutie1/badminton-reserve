@@ -19,8 +19,11 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import holidays
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+
+JP_HOLIDAYS = holidays.Japan()
 
 # ====== 設定 ======
 BASE_URL = "https://www2.pf489.com/toshima/WebR/Home/WgR_ModeSelect"
@@ -107,12 +110,14 @@ def build_candidate_days(year: int, month: int, booked_weeks: set[int]) -> list[
     """
     曜日優先順位(月→火→水→木)×週分散で候補日リストを生成。
     週の優先順位: 第3週→第4週→第5週→第2週→第1週（後半週が競合少ない傾向）。
-    既に予約済みの週はスキップ。
+    祝日は除外。既に予約済みの週はスキップ。
     """
     week_priority = [3, 4, 5, 2, 1]
     candidates = []
     for weekday in WEEKDAY_PRIORITY:
         days = get_weekdays_in_month(year, month, weekday)
+        # 祝日を除外
+        days = [d for d in days if d.date() not in JP_HOLIDAYS]
         days_by_week = {get_week_number(d): d for d in days}
         for wn in week_priority:
             if wn in booked_weeks or wn not in days_by_week:
@@ -836,8 +841,10 @@ def parse_args():
                         help="テストモード（4月分、ふるさと千川の部屋）")
     parser.add_argument("--dry-run", action="store_true",
                         help="確認画面まで進んで申込せずに停止")
-    parser.add_argument("--headless", action="store_true",
-                        help="ヘッドレスモードで実行")
+    parser.add_argument("--headless", action="store_true", default=True,
+                        help="ヘッドレスモードで実行（デフォルト: 有効）")
+    parser.add_argument("--no-headless", dest="headless", action="store_false",
+                        help="GUIモードで実行")
     parser.add_argument("--diag-level", type=int, choices=[0, 1, 2], default=None,
                         help="診断レベル (0=なし, 1=エラー時のみ, 2=全ステップ)")
     return parser.parse_args()
@@ -873,16 +880,37 @@ def main():
         DRY_RUN = True
         debug("[main] DRY_RUN: 確認画面まで進み、申込はしません")
 
+    # テスト時はGUIがデフォルト（--headless で上書き可）
+    headless = args.headless
+    if args.test and "--headless" not in sys.argv:
+        headless = False
+
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(
             user_data_dir=str(USER_DATA_DIR),
-            headless=args.headless,
+            headless=headless,
             locale="ja-JP",
             timezone_id="Asia/Tokyo",
             args=["--disable-dev-shm-usage", "--disable-gpu", "--no-sandbox"],
         )
         page = ctx.new_page()
         page.set_default_navigation_timeout(30000)
+
+        # 不要リソースをブロック（画像・フォント・CSS・メディア・アナリティクス等）
+        BLOCKED_TYPES = {"image", "font", "media", "stylesheet"}
+        BLOCKED_URLS = ["google-analytics", "googletagmanager", "gtag", "facebook", "twitter"]
+
+        def handle_route(route):
+            if route.request.resource_type in BLOCKED_TYPES:
+                route.abort()
+                return
+            url = route.request.url.lower()
+            if any(b in url for b in BLOCKED_URLS):
+                route.abort()
+                return
+            route.continue_()
+
+        page.route("**/*", handle_route)
 
         try:
             booked = book_days(page, target_month)
