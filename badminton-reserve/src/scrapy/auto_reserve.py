@@ -182,25 +182,17 @@ def select_facility(page):
     page.wait_for_selector("#shisetsutbl", timeout=5000)
     save_diag(page, "step3_facility_list")
 
-    # 施設一覧 (#shisetsutbl) が表示された場合 → 多目的ホールにチェック
+    # 施設一覧 (#shisetsutbl) が表示された場合 → ROOM_LABEL にチェック
     tbl = page.locator("#shisetsutbl")
     if tbl.count():
-        # checkShisetsu116080 = 多目的ホール
-        checkbox_label = page.locator("label[for='checkShisetsu116080']")
-        if checkbox_label.count():
-            checkbox = page.locator("#checkShisetsu116080")
-            if checkbox.count() and not checkbox.is_checked():
-                checkbox_label.click()
-            debug("[facility] 多目的ホール チェック済み")
+        # テキストで対象部屋を検索
+        labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
+        if labels.count():
+            labels.first.click()
+            debug(f"[facility] {ROOM_LABEL} チェック済み")
         else:
-            # フォールバック: テキストで探す
-            labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
-            if labels.count():
-                labels.first.click()
-                debug("[facility] 多目的ホール チェック済み (fallback)")
-            else:
-                save_diag(page, "room_not_found", level=1)
-                raise RuntimeError("多目的ホールが見つかりません")
+            save_diag(page, "room_not_found", level=1)
+            raise RuntimeError(f"'{ROOM_LABEL}' が見つかりません")
 
         # 「次へ進む」ボタンをクリック
         click_next_button(page)
