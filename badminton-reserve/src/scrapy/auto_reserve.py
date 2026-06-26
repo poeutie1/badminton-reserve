@@ -889,7 +889,7 @@ def main():
         page.set_default_navigation_timeout(30000)
 
         # 不要リソースをブロック（画像・フォント・CSS・メディア・アナリティクス等）
-        BLOCKED_TYPES = {"image", "font", "media", "stylesheet"}
+        BLOCKED_TYPES = {"image", "font", "media"}
         BLOCKED_URLS = ["google-analytics", "googletagmanager", "gtag", "facebook", "twitter"]
 
         def handle_route(route):
