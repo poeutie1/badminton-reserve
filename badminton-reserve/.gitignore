@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scrapy diagnostics (screenshots/HTML dumps)
+src/scrapy/diag/*.png
+src/scrapy/diag/*.html
+src/scrapy/udata/
+src/scrapy/__pycache__/
