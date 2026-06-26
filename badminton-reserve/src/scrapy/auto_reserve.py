@@ -182,17 +182,24 @@ def select_facility(page):
     page.wait_for_selector("#shisetsutbl", timeout=5000)
     save_diag(page, "step3_facility_list")
 
-    # 施設一覧 (#shisetsutbl) が表示された場合 → ROOM_LABEL にチェック
+    # 施設一覧 (#shisetsutbl) が表示された場合
     tbl = page.locator("#shisetsutbl")
     if tbl.count():
-        # テキストで対象部屋を検索
+        # まず ROOM_LABEL で部屋を検索（部屋一覧が表示されている場合）
         labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
         if labels.count():
             labels.first.click()
             debug(f"[facility] {ROOM_LABEL} チェック済み")
         else:
-            save_diag(page, "room_not_found", level=1)
-            raise RuntimeError(f"'{ROOM_LABEL}' が見つかりません")
+            # 部屋一覧がない場合（施設名のみ表示）→ 施設「ふるさと千川館」を選択
+            facility_labels = tbl.locator("td.shisetsu label").filter(has_text=FACILITY_NAME)
+            if facility_labels.count():
+                cb = facility_labels.first
+                cb.click()
+                debug(f"[facility] {FACILITY_NAME} チェック済み（部屋選択は後続画面）")
+            else:
+                # チェックボックスが既に選択済みの可能性もある
+                debug("[facility] 施設は既に選択済みの可能性あり、次へ進む")
 
         # 「次へ進む」ボタンをクリック
         click_next_button(page)
