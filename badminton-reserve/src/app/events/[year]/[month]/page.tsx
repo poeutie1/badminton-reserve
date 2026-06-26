@@ -288,25 +288,27 @@ export default async function EventsPage({ params }: Props) {
   // 非同期の修復は待たない
   Promise.allSettled(toFix).catch(() => {});
 
-  // --- 2) プロフィール解決 ---
+  // --- 2) プロフィール解決（並列取得） ---
   const allIds = Array.from(
     new Set(base.flatMap((e) => [...e.participants, ...e.waitlist]))
   );
 
   const profilesMap = new Map<string, ProfileDoc>();
+  const usersMap = new Map<string, UserProfile>();
+
   if (allIds.length) {
-    const refs = allIds.map((id) => db.collection("profiles").doc(id));
-    const snaps = await db.getAll(...refs);
-    snaps.forEach((s: DocumentSnapshot) =>
+    const profileRefs = allIds.map((id) => db.collection("profiles").doc(id));
+    const userRefs = allIds.map((id) => db.collection("users").doc(id));
+
+    const [profileSnaps, userSnaps] = await Promise.all([
+      db.getAll(...profileRefs),
+      db.getAll(...userRefs),
+    ]);
+
+    profileSnaps.forEach((s: DocumentSnapshot) =>
       profilesMap.set(s.id, s.exists ? (s.data() as ProfileDoc) : {})
     );
-  }
-
-  const usersMap = new Map<string, UserProfile>();
-  if (allIds.length) {
-    const refs = allIds.map((id) => db.collection("users").doc(id));
-    const snaps = await db.getAll(...refs);
-    snaps.forEach((s: DocumentSnapshot) =>
+    userSnaps.forEach((s: DocumentSnapshot) =>
       usersMap.set(s.id, s.exists ? (s.data() as UserProfile) : {})
     );
   }
