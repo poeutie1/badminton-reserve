@@ -165,11 +165,60 @@ def is_logged_in(page) -> bool:
         return False
 
 
+def is_session_timeout(page) -> bool:
+    """セッションタイムアウトでセッションが切れたページかどうか判定。
+    カウントダウン表示（あとN分）ではなく、施設テーブルもログアウトリンクもない
+    メッセージだけのページを検出する。"""
+    try:
+        # ログアウトリンクがあればセッション有効
+        if page.locator("a:has-text('ログアウト')").count() > 0:
+            return False
+        # 施設テーブルがあればセッション有効
+        if page.locator("#shisetsutbl").count() > 0:
+            return False
+        # メッセージページで「セッションタイムアウト」が含まれていれば切れている
+        text = page.text_content("body") or ""
+        return "セッションタイムアウト" in text
+    except Exception:
+        return False
+
+
+def recover_session(page):
+    """セッション切れから復帰: 再ログイン→施設選択"""
+    debug("[recovery] セッションタイムアウト検知、再ログインします")
+    page.goto(BASE_URL, wait_until="domcontentloaded")
+    login(page)
+    select_facility(page)
+
+
 # ====== Step 2: 施設選択（ふるさと千川館 → 多目的ホール） ======
-def select_facility(page):
+def dismiss_overlays(page):
+    """セッションタイムアウト警告やお知らせ等のオーバーレイを閉じる"""
+    try:
+        page.evaluate("""() => {
+            // remodal系オーバーレイ
+            document.querySelectorAll('.remodal-overlay, .remodal').forEach(el => {
+                el.style.display = 'none';
+            });
+            // メッセージダイアログの「閉じる」ボタン
+            document.querySelectorAll('a[href*="close"], button').forEach(el => {
+                if ((el.textContent || '').includes('閉じる') || (el.textContent || '').includes('×')) {
+                    el.click();
+                }
+            });
+        }""")
+    except Exception:
+        pass  # ナビゲーション中の場合は無視
+
+
+def select_facility(page, _retry: int = 0):
+    if _retry > 1:
+        raise RuntimeError("施設選択のリトライ上限に達しました")
     # ModeSelect に戻る（ログイン後のページから）
     if not page.locator("#category_18").count():
         page.goto(BASE_URL, wait_until="domcontentloaded")
+
+    dismiss_overlays(page)
 
     # カテゴリ「ふるさと千川館」(#category_18) をクリック
     debug("[facility] ふるさと千川館 を選択")
@@ -179,34 +228,81 @@ def select_facility(page):
         raise RuntimeError("カテゴリ『ふるさと千川館』が見つかりません")
     cat_btn.click()
     page.wait_for_load_state("domcontentloaded")
+
+    # カテゴリクリック後もセッションタイムアウトの可能性あり
+    if is_session_timeout(page):
+        debug("[facility] カテゴリ選択後にセッションタイムアウト検知")
+        page.goto(BASE_URL, wait_until="domcontentloaded")
+        login(page)
+        return select_facility(page, _retry=_retry + 1)
+
     page.wait_for_selector("#shisetsutbl", timeout=5000)
+    dismiss_overlays(page)
     save_diag(page, "step3_facility_list")
 
-    # 施設一覧 (#shisetsutbl) が表示された場合
+    # Step 2a: 施設一覧から施設 or 部屋を選択
     tbl = page.locator("#shisetsutbl")
-    if tbl.count():
-        # まず ROOM_LABEL で部屋を検索（部屋一覧が表示されている場合）
-        labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
-        if labels.count():
-            labels.first.click()
-            debug(f"[facility] {ROOM_LABEL} チェック済み")
-        else:
-            # 部屋一覧がない場合（施設名のみ表示）→ 施設「ふるさと千川館」を選択
-            facility_labels = tbl.locator("td.shisetsu label").filter(has_text=FACILITY_NAME)
-            if facility_labels.count():
-                cb = facility_labels.first
-                cb.click()
-                debug(f"[facility] {FACILITY_NAME} チェック済み（部屋選択は後続画面）")
-            else:
-                # チェックボックスが既に選択済みの可能性もある
-                debug("[facility] 施設は既に選択済みの可能性あり、次へ進む")
+    if not tbl.count():
+        debug("[facility] 直接カレンダー画面に遷移")
+        return
 
-        # 「次へ進む」ボタンをクリック
+    # ROOM_LABEL（多目的ホール等）が直接見つかればそれを選択
+    room_labels = tbl.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
+    if room_labels.count():
+        room_labels.first.click()
+        debug(f"[facility] {ROOM_LABEL} チェック済み")
+        click_next_button(page)
+        save_diag(page, "step4_calendar")
+        return
+
+    # 施設名のみ表示 → 施設を選択して「次へ進む」→ 部屋選択画面へ
+    facility_labels = tbl.locator("td.shisetsu label").filter(has_text=FACILITY_NAME)
+    if facility_labels.count():
+        facility_labels.first.click()
+        debug(f"[facility] {FACILITY_NAME} チェック済み")
+    else:
+        debug("[facility] 施設は既に選択済みの可能性あり")
+
+    if not click_next_button(page):
+        save_diag(page, "next_button_not_found", level=1)
+        raise RuntimeError("「次へ進む」ボタンが見つかりません")
+
+    # セッションタイムアウト検知 → 再ログインしてリトライ
+    if is_session_timeout(page):
+        debug("[facility] セッションタイムアウト検知、再ログインします")
+        page.goto(BASE_URL, wait_until="domcontentloaded")
+        login(page)
+        return select_facility(page, _retry=_retry + 1)
+
+    dismiss_overlays(page)
+
+    # 次へ進む後: カレンダーページ or 部屋選択ページ
+    # カレンダーページなら施設選択完了
+    if page.locator("#shisetsutbl").count():
+        # 部屋選択ページ: ROOM_LABEL を選択して次へ
+        save_diag(page, "step3b_room_list")
+        tbl2 = page.locator("#shisetsutbl")
+        room_labels2 = tbl2.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
+        if room_labels2.count():
+            room_labels2.first.click()
+            debug(f"[facility] {ROOM_LABEL} チェック済み（2段階目）")
+        else:
+            all_labels = tbl2.locator("label")
+            for i in range(all_labels.count()):
+                txt = (all_labels.nth(i).text_content() or "").strip()
+                if ROOM_LABEL in txt:
+                    all_labels.nth(i).click()
+                    debug(f"[facility] {ROOM_LABEL} チェック済み（テキスト検索）")
+                    break
+            else:
+                save_diag(page, "room_not_found", level=1)
+                raise RuntimeError(f"'{ROOM_LABEL}' が見つかりません")
         click_next_button(page)
         save_diag(page, "step4_calendar")
     else:
-        # 直接カレンダーに遷移した場合
-        debug("[facility] 直接カレンダー画面に遷移")
+        # カレンダーページに直接遷移（施設別空き状況）
+        debug("[facility] カレンダーページに直接遷移")
+        save_diag(page, "step4_calendar")
 
 
 def click_next_button(page):
