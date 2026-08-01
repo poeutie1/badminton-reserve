@@ -276,32 +276,40 @@ def select_facility(page, _retry: int = 0):
 
     dismiss_overlays(page)
 
-    # 次へ進む後: カレンダーページ or 部屋選択ページ
-    # カレンダーページなら施設選択完了
-    if page.locator("#shisetsutbl").count():
-        # 部屋選択ページ: ROOM_LABEL を選択して次へ
+    # 「次へ進む」後はページ遷移(postback)が非同期に続くことがある。
+    # 遷移完了前に判定すると、古い施設一覧DOM（施設名のみのtoggle）を
+    # 部屋選択ページと誤認して room_not_found になる（本番の多目的ホールも
+    # 施設一覧に施設名しか無いため同経路を通る）。
+    # そこで「カレンダー(checkdate)」または「ROOM_LABEL を含む部屋選択セル」の
+    # いずれかが現れるまでポーリングで待ってから判定する。
+    room_toggles = page.locator(
+        "#shisetsutbl td.shisetsu.toggle label"
+    ).filter(has_text=ROOM_LABEL)
+    for _ in range(30):  # 最大 ~9 秒
+        try:
+            if (page.locator("input[name='checkdate']").count() > 0
+                    or room_toggles.count() > 0):
+                break
+        except Exception:
+            pass  # 遷移中の一時的な例外は無視して待機継続
+        page.wait_for_timeout(300)
+
+    # 遷移先の判定は #shisetsutbl の有無ではなく実要素で行う。
+    # 施設→部屋選択を挟まず直接カレンダーへ遷移する場合、そのテーブルの
+    # id は shisetsutbl ではないため、旧判定はカレンダーページを部屋選択
+    # ページと誤認していた。カレンダーは input[name="checkdate"] で区別する。
+    is_calendar = page.locator("input[name='checkdate']").count() > 0
+
+    if not is_calendar and room_toggles.count():
+        # 真の部屋選択ページ: ROOM_LABEL を選択して次へ
         save_diag(page, "step3b_room_list")
-        tbl2 = page.locator("#shisetsutbl")
-        room_labels2 = tbl2.locator("td.shisetsu.toggle label").filter(has_text=ROOM_LABEL)
-        if room_labels2.count():
-            room_labels2.first.click()
-            debug(f"[facility] {ROOM_LABEL} チェック済み（2段階目）")
-        else:
-            all_labels = tbl2.locator("label")
-            for i in range(all_labels.count()):
-                txt = (all_labels.nth(i).text_content() or "").strip()
-                if ROOM_LABEL in txt:
-                    all_labels.nth(i).click()
-                    debug(f"[facility] {ROOM_LABEL} チェック済み（テキスト検索）")
-                    break
-            else:
-                save_diag(page, "room_not_found", level=1)
-                raise RuntimeError(f"'{ROOM_LABEL}' が見つかりません")
+        room_toggles.first.click()
+        debug(f"[facility] {ROOM_LABEL} チェック済み（2段階目）")
         click_next_button(page)
         save_diag(page, "step4_calendar")
     else:
-        # カレンダーページに直接遷移（施設別空き状況）
-        debug("[facility] カレンダーページに直接遷移")
+        # カレンダーページに直接遷移（施設別空き状況・部屋は行で区別）
+        debug("[facility] カレンダーページに直接遷移（部屋選択不要）")
         save_diag(page, "step4_calendar")
 
 
@@ -365,8 +373,9 @@ def set_display_period_one_month(page, start_date: datetime):
             page.wait_for_load_state("domcontentloaded")
             page.wait_for_selector("table.calendar.horizon.toggle", timeout=5000)
             debug(f"[calendar] 表示期間を1ヶ月に設定: {val}")
-            return
+            return True
     debug("[calendar] 表示ボタンが見つかりません")
+    return False
 
 
 def get_calendar_header_year_month(page) -> tuple:
@@ -417,7 +426,7 @@ def read_all_availability(page, room_label: str) -> dict[str, str]:
             if (!row) return;
             const roomCell = row.querySelector('td.shisetsu, th.shisetsu');
             const room = roomCell ? roomCell.textContent.trim() : '';
-            if (!room.includes(roomLabel) && !room.includes('多目的')) return;
+            if (!room.includes(roomLabel)) return;
             const mark = (label.innerText || '').trim();
             if (mark) result[ymd] = mark;
         });
@@ -450,7 +459,7 @@ def click_date_on_calendar(page, d: datetime) -> bool:
             row_txt = (row.first.text_content() or "") if row.count() else ""
         except Exception:
             row_txt = ""
-        if ROOM_LABEL not in row_txt and "多目的" not in row_txt:
+        if ROOM_LABEL not in row_txt:
             continue
         cid = el.get_attribute("id") or ""
         lab = page.locator(f'label[for="{cid}"]')
@@ -919,6 +928,20 @@ def book_days(page, target_month: datetime) -> list[datetime]:
                     set_display_period_one_month(page, target_month_start)
                     navigate_to_month(page, target_month)
                 break  # 候補リストを再生成（booked_weeksが更新されたので）
+            else:
+                # 予約失敗（3枠揃わず等）: go_back でカレンダーの月表示が
+                # 崩れ、次の候補日が「空きなし」と誤判定されるのを防ぐため、
+                # 月表示を復元してから次の候補へ進む。表示ボタンが無い
+                # （＝カレンダー画面に着地していない）場合は施設選択から
+                # 確実に復帰してからやり直す。
+                debug(f"[main] {ymd} は取得できず → 月表示を復元して次候補へ")
+                if not set_display_period_one_month(page, target_month_start):
+                    debug("[main] 月表示の復元に失敗 → 施設選択から復帰")
+                    if not return_to_calendar_after_booking(page):
+                        login(page)
+                        select_facility(page)
+                    set_display_period_one_month(page, target_month_start)
+                navigate_to_month(page, target_month)
 
         if not reserved_this_round:
             debug("[main] この周回で予約できる日がありませんでした")
