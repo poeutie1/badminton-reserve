@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/tests/__pycache__/
 
 # next.js
 /.next/
@@ -39,6 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local preview runtime, test credentials and emulator binaries
+/.local-preview/
+/.local-tools/
 
 # scrapy diagnostics (screenshots/HTML dumps)
 src/scrapy/diag/*.png

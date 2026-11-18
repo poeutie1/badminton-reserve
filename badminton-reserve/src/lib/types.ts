@@ -27,8 +27,9 @@ export type Event = {
   date: string; // ISO
   capacity: number;
   participants: string[]; // uid[]
-  waitlist: string[]; // uid[]
+  waitlist: string[]; // uid / guest ID、共通の受付順
   guests: GuestParticipant[];
+  guestWaitlist?: GuestParticipant[];
   createdBy: string; // uid
   status: "open" | "closed";
 };

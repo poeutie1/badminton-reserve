@@ -23,6 +23,7 @@ export async function pushLine(
   to: string,
   messages: LineMessage[]
 ): Promise<boolean> {
+  if (process.env.LINE_NOTIFICATIONS_DISABLED === "true" || process.env.FIRESTORE_EMULATOR_HOST) return true;
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) {
     console.error("LINE_CHANNEL_ACCESS_TOKEN is missing");

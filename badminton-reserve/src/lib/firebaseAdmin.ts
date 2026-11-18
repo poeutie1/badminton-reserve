@@ -16,7 +16,8 @@ type ServiceAccountJson = {
   [k: string]: unknown;
 };
 
-const svcRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+const svcRaw = process.env.FIREBASE_SERVICE_ACCOUNT || (emulator ? "{}" : undefined);
 if (!svcRaw) {
   throw new Error(
     "FIREBASE_SERVICE_ACCOUNT が未設定です。サービスアカウントJSONを1行で入れてください。"
@@ -36,7 +37,7 @@ try {
 const privateKey = parsed.private_key?.replace(/\\n/g, "\n");
 
 const projectId =
-  process.env.FIREBASE_PROJECT_ID || parsed.project_id || undefined;
+  process.env.FIREBASE_PROJECT_ID || parsed.project_id || (emulator ? "demo-badminton-local" : undefined);
 
 if (!projectId) {
   throw new Error(
@@ -52,13 +53,13 @@ const serviceAccount: ServiceAccount = {
 };
 
 if (process.env.NODE_ENV !== "production") {
-  console.log("[firebaseAdmin] using service account for project:", projectId);
+  console.log(emulator ? "[firebaseAdmin] using Firestore Emulator:" : "[firebaseAdmin] using service account for project:", projectId);
 }
 
 export const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(serviceAccount),
+    ...(emulator ? {} : { credential: cert(serviceAccount) }),
     projectId,
   } satisfies AppOptions);
 
