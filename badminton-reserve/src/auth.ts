@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
 import Line from "next-auth/providers/line";
+import Credentials from "next-auth/providers/credentials";
+import { isLocalPreviewRequest, isLocalPreview, localPreviewUsers } from "@/lib/localPreview";
 
 /** ---------- type augmentations (no any) ---------- */
 declare module "next-auth" {
@@ -45,6 +47,15 @@ export const {
   handlers: { GET, POST },
 } = NextAuth({
   providers: [
+    ...(isLocalPreview() ? [Credentials({
+      id: "local-preview", name: "ローカル確認用ログイン",
+      credentials: { user: { label: "確認ユーザー", type: "text" } },
+      authorize(credentials, request) {
+        if (!isLocalPreviewRequest(request)) return null;
+        const user = localPreviewUsers.find(user => user.key === credentials.user);
+        return user ? { id: user.id, name: user.name } : null;
+      },
+    })] : []),
     Line({
       clientId: process.env.LINE_CLIENT_ID!,
       clientSecret: process.env.LINE_CLIENT_SECRET!,
@@ -55,7 +66,12 @@ export const {
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   trustHost: true,
   callbacks: {
-    async jwt({ token, profile, account }) {
+    async jwt({ token, profile, account, user }) {
+      if (account?.provider === "local-preview" && user?.id && isLocalPreview()) {
+        token.uid = user.id;
+        token.name = user.name;
+        return token;
+      }
       // 初回サインイン時に一意IDを確定
       const lineSub =
         pickStr(profile, "sub") ??

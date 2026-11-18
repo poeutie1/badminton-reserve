@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 export default function CancelButtons({
   id,
@@ -18,14 +18,18 @@ export default function CancelButtons({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
 
   // 楽観的UI（最初はサーバー判定を反映）
   const [state, setState] = useState<{ joined: boolean; inWaitlist: boolean }>({
     joined,
     inWaitlist,
   });
+  useEffect(() => setState({ joined, inWaitlist }), [joined, inWaitlist]);
 
   async function call(action: "join" | "cancel") {
+    if (busy) return;
+    setBusy(true);
     // 1) 楽観的にUIを先に更新
     const prev = { ...state };
     if (action === "join") {
@@ -35,18 +39,25 @@ export default function CancelButtons({
     }
 
     // 2) API 実行
-    const res = await fetch(`/api/events/${id}/${action}`, { method: "POST" });
+    try {
+      const res = await fetch(`/api/events/${id}/${action}`, { method: "POST" });
 
-    // 3) 失敗なら巻き戻し
-    if (!res.ok) {
+      // 3) 失敗なら巻き戻し
+      if (!res.ok) {
+        setState(prev);
+        const msg = await res.text().catch(() => "");
+        alert(msg || `${action} に失敗しました`);
+        return;
+      }
+
+      // 4) 成功したらサーバー状態で再同期
+      startTransition(() => router.refresh());
+    } catch {
       setState(prev);
-      const msg = await res.text().catch(() => "");
-      alert(msg || `${action} に失敗しました`);
-      return;
+      alert("通信に失敗しました。もう一度お試しください。");
+    } finally {
+      setBusy(false);
     }
-
-    // 4) 成功したらサーバー状態で再同期
-    startTransition(() => router.refresh());
   }
 
   // 参加済みなら「キャンセル」一本に切替
@@ -54,7 +65,7 @@ export default function CancelButtons({
     return (
       <button
         onClick={() => call("cancel")}
-        disabled={isPending || disabled}
+        disabled={busy || isPending || disabled}
         className="px-3 py-1 rounded border disabled:opacity-50"
       >
         {state.inWaitlist ? "待機を取り消す" : "キャンセル"}
@@ -66,7 +77,7 @@ export default function CancelButtons({
   return (
     <button
       onClick={() => call("join")}
-      disabled={isPending || disabled}
+      disabled={busy || isPending || disabled}
       className="px-3 py-1 rounded bg-black text-white disabled:opacity-50"
       title={
         full ? "定員に達しているため、参加すると待機になります" : undefined

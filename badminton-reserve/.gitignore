@@ -45,3 +45,11 @@ src/scrapy/diag/*.png
 src/scrapy/diag/*.html
 src/scrapy/udata/
 src/scrapy/__pycache__/
+src/scrapy/test/__pycache__/
+src/scrapy/.venv/
+src/scrapy/.auto_reserve.lock
+
+# Local web preview runtime and emulator data
+/.local-tools/
+/.local-preview/
+*-debug.log

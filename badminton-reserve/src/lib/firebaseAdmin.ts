@@ -1,4 +1,5 @@
 import "server-only";
+import { isLocalPreview } from "./localPreview";
 import {
   getApps,
   initializeApp,
@@ -16,51 +17,30 @@ type ServiceAccountJson = {
   [k: string]: unknown;
 };
 
-const svcRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
-if (!svcRaw) {
-  throw new Error(
-    "FIREBASE_SERVICE_ACCOUNT が未設定です。サービスアカウントJSONを1行で入れてください。"
-  );
-}
+const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+// LOCAL_PREVIEW指定時は、設定不備で本番に接続しないよう先に検証する。
+isLocalPreview();
 
-let parsed: ServiceAccountJson;
-try {
-  parsed = JSON.parse(svcRaw) as ServiceAccountJson;
-} catch {
-  throw new Error(
-    "FIREBASE_SERVICE_ACCOUNT のJSONが不正です。1行JSON（ダブルクォート）で入れてください。"
-  );
-}
-
-// 改行を復元
-const privateKey = parsed.private_key?.replace(/\\n/g, "\n");
-
-const projectId =
-  process.env.FIREBASE_PROJECT_ID || parsed.project_id || undefined;
-
-if (!projectId) {
-  throw new Error(
-    "projectId が見つかりません。FIREBASE_PROJECT_ID を設定するか、JSON内に project_id を含めてください。"
-  );
-}
-
-// cert() が要求する camelCase の ServiceAccount に変換
-const serviceAccount: ServiceAccount = {
-  projectId,
-  privateKey,
-  clientEmail: parsed.client_email,
-};
-
-if (process.env.NODE_ENV !== "production") {
-  console.log("[firebaseAdmin] using service account for project:", projectId);
-}
-
-export const app =
-  getApps()[0] ??
-  initializeApp({
-    credential: cert(serviceAccount),
+function appOptions(): AppOptions {
+  if (emulator) {
+    return { projectId: process.env.FIREBASE_PROJECT_ID || "demo-badminton-local" };
+  }
+  const svcRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!svcRaw) throw new Error("FIREBASE_SERVICE_ACCOUNT が未設定です");
+  let parsed: ServiceAccountJson;
+  try { parsed = JSON.parse(svcRaw) as ServiceAccountJson; }
+  catch { throw new Error("FIREBASE_SERVICE_ACCOUNT のJSONが不正です"); }
+  const projectId = process.env.FIREBASE_PROJECT_ID || parsed.project_id;
+  if (!projectId) throw new Error("Firebase projectId が見つかりません");
+  const serviceAccount: ServiceAccount = {
     projectId,
-  } satisfies AppOptions);
+    privateKey: parsed.private_key?.replace(/\\n/g, "\n"),
+    clientEmail: parsed.client_email,
+  };
+  return { credential: cert(serviceAccount), projectId };
+}
+
+export const app = getApps()[0] ?? initializeApp(appOptions());
 
 export function getAdminDb() {
   return getFirestore(app);

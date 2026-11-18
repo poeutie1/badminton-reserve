@@ -23,6 +23,9 @@ export async function pushLine(
   to: string,
   messages: LineMessage[]
 ): Promise<boolean> {
+  if (process.env.LINE_NOTIFICATIONS_DISABLED === "true" || process.env.FIRESTORE_EMULATOR_HOST) {
+    return true;
+  }
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) {
     console.error("LINE_CHANNEL_ACCESS_TOKEN is missing");
@@ -48,6 +51,7 @@ export function buildPromotionFlex(args: {
   title: string;
   whenText: string; // 例: "11/12(火) 18:50〜21:30"
   url: string; // イベント詳細URL or LIFF URL
+  guestName?: string;
 }): LineMessage[] {
   const { title, whenText, url } = args;
   return [
@@ -92,7 +96,9 @@ export function buildPromotionFlex(args: {
             },
             {
               type: "text",
-              text: "キャンセルが出たため、キャンセル待ちを参加に繰り上げました。ご参加フォームからイベント内容をご確認ください。",
+              text: args.guestName
+                ? `登録したゲスト「${args.guestName}」が参加に繰り上がりました。ゲストの方へお知らせください。`
+                : "空きが出たため、キャンセル待ちを参加に繰り上げました。イベント内容をご確認ください。",
               size: "sm",
               color: "#374151",
               wrap: true,
@@ -123,6 +129,7 @@ export async function pushPromotedMessage(args: {
   title: string;
   whenLabel: string; // 表示用日時
   eventUrl: string; // 遷移先URL
+  guestName?: string;
 }) {
   const u = toLineUserId(args.to);
   if (!u) {
@@ -134,6 +141,7 @@ export async function pushPromotedMessage(args: {
     title: args.title,
     whenText: args.whenLabel,
     url: args.eventUrl,
+    guestName: args.guestName,
   });
 
   const ok = await pushLine(u, messages);

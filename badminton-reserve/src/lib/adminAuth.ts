@@ -21,7 +21,7 @@ export async function issueAdminCookie() {
 
   (await cookies()).set(COOKIE_NAME, jwt, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE_SEC,
@@ -31,7 +31,7 @@ export async function issueAdminCookie() {
 export async function clearAdminCookie() {
   (await cookies()).set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 0,

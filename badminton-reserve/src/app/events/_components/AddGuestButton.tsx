@@ -1,8 +1,10 @@
 // src/app/events/_components/AddGuestButton.tsx
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AddGuestButton({ eventId }: { eventId: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<string>("");
@@ -32,7 +34,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
       setGender("");
       setYears("");
       setOpen(false);
-      location.reload();
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -56,6 +58,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
       <input
         type="text"
         placeholder="名前（必須）"
+        aria-label="ゲストの名前"
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
@@ -64,6 +67,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
       <div className="flex gap-2">
         <select
           value={gender}
+          aria-label="ゲストの性別"
           onChange={(e) => setGender(e.target.value)}
           className="rounded border border-gray-300 px-2 py-1 text-sm"
           disabled={busy}
@@ -75,6 +79,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
         <input
           type="number"
           placeholder="経験年数"
+          aria-label="ゲストの経験年数"
           value={years}
           onChange={(e) => setYears(e.target.value)}
           min={0}

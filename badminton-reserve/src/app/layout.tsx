@@ -3,6 +3,8 @@ import "./globals.css";
 import Link from "next/link";
 import SessionUpserter from "./events/_components/SessionUpserter";
 import { Providers } from "./providers";
+import LocalPreviewControls from "./LocalPreviewControls";
+import { isLocalPreview } from "@/lib/localPreview";
 
 export default function RootLayout({
   children,
@@ -13,6 +15,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className="min-h-screen bg-sky-50 dark:bg-gray-950">
         <Providers>
+          {isLocalPreview() && <LocalPreviewControls />}
           {/* ログイン中のみ /api/me/upsert を一度だけ叩く */}
           <SessionUpserter />
 

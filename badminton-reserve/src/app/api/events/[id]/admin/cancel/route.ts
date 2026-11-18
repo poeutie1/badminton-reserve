@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { requireUserId } from "@/lib/user";
 import { FieldValue } from "firebase-admin/firestore";
-import { pushPromotedMessage } from "@/lib/line";
+import { cancelMember } from "@/lib/attendance";
+import { updateEventAttendance } from "@/lib/eventAttendance";
 import { isAdminByUid } from "@/lib/isAdmin";
 
 export const runtime = "nodejs";
@@ -48,25 +49,12 @@ function toDate(v: unknown): Date {
   if (typeof v === "string" || typeof v === "number") return new Date(v);
   return new Date();
 }
-function toStrArr(v: unknown): string[] {
-  return Array.isArray(v)
-    ? v.filter((x): x is string => typeof x === "string")
-    : [];
-}
-// "line:Uxxxx" → "Uxxxx"
-function normalizeLineTo(s?: string | null): string | null {
-  if (!s) return null;
-  return s.startsWith("line:") ? s.slice(5) : s;
-}
 // /api/events/[id]/admin/cancel から id を取得（ctx なしでOK）
 function getEventIdFromRequest(req: Request): string | null {
   const pathname = new URL(req.url).pathname;
   const m = pathname.match(/\/api\/events\/([^/]+)\/admin\/cancel\/?$/);
   return m ? decodeURIComponent(m[1]!) : null;
 }
-
-/* ========= Types ========= */
-type UserDoc = { lineUserId?: string | null };
 
 /* ========= Core ========= */
 async function handleAdminCancel(eventId: string, req: Request) {
@@ -97,52 +85,20 @@ async function handleAdminCancel(eventId: string, req: Request) {
   }
 
   const db = getAdminDb();
-  const ref = db.collection("events").doc(eventId);
 
   // 通知用
   let title = "";
   let whenLabel = "";
-  let promotedUser: string | null = null;
-
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const eventUrl = `${baseUrl}/events#${eventId}`;
-
-  // 参加/待機更新（競合対策：トランザクション）
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error("not found");
-
-    const data = snap.data() ?? {};
-    title = (data.title as string) ?? "";
+  const result = await updateEventAttendance(eventId, (state, capacity, data) => {
+    title = typeof data.title === "string" ? data.title : "";
     const d = toDate(data.date);
-    const datePart = d.toLocaleDateString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      weekday: "short",
-    });
-    whenLabel = data.time ? `${datePart} ${data.time as string}` : datePart;
-
-    let participants = toStrArr(data.participants);
-    let waitlist = toStrArr(data.waitlist);
-
-    const wasParticipant = participants.includes(target);
-
-    // 対象を除外
-    participants = participants.filter((u) => u !== target);
-    waitlist = waitlist.filter((u) => u !== target);
-
-    // 繰上げ
-    if (promote && wasParticipant && waitlist.length > 0) {
-      promotedUser = waitlist.shift()!;
-      if (!participants.includes(promotedUser)) {
-        participants.push(promotedUser);
-      }
-    }
-
-    tx.update(ref, { participants, waitlist });
-  });
+    whenLabel = d.toLocaleDateString("ja-JP", {
+      timeZone: "Asia/Tokyo", year: "numeric", month: "numeric", day: "numeric", weekday: "short",
+    }) + (typeof data.time === "string" ? ` ${data.time}` : "");
+    return { promoted: cancelMember(state, target, capacity, promote) };
+  }, notify);
 
   // 通知
   if (notify) {
@@ -165,39 +121,8 @@ async function handleAdminCancel(eventId: string, req: Request) {
       })
       .catch((e) => console.error("notify(admin-cancelled) failed", e));
 
-    // 繰上げがあれば
-    if (promotedUser) {
-      await db
-        .collection("users")
-        .doc(promotedUser)
-        .collection("notifications")
-        .add({
-          type: "promotion",
-          eventId,
-          title,
-          whenLabel,
-          whenText: whenLabel,
-          url: eventUrl,
-          read: false,
-          isRead: false,
-          createdAt: FieldValue.serverTimestamp(),
-        })
-        .catch((e) => console.error("notify(promotion/save) failed", e));
-
-      const uSnap = await db.collection("users").doc(promotedUser).get();
-      const uData: UserDoc | undefined = uSnap.exists
-        ? (uSnap.data() as UserDoc)
-        : undefined;
-      const to = normalizeLineTo(uData?.lineUserId ?? promotedUser);
-      if (to) {
-        await pushPromotedMessage({ to, title, whenLabel, eventUrl }).catch(
-          (e) => console.error("notify(promotion/push) failed", e)
-        );
-      }
-    }
   }
-
-  return NextResponse.json({ ok: true, promotedUser });
+  return NextResponse.json({ ok: true, promotedUser: result.promoted[0]?.id ?? null });
 }
 
 /* ========= Route Handlers（ctx なし） ========= */

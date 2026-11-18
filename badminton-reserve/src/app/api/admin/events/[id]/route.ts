@@ -4,8 +4,8 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebaseAdmin";
-import { pushPromotedMessage } from "@/lib/line";
-import { FieldValue } from "firebase-admin/firestore";
+import { promoteWaitlist } from "@/lib/attendance";
+import { updateEventAttendance } from "@/lib/eventAttendance";
 
 /* ===== Admin gate ===== */
 const ADMIN_UIDS: string[] = (process.env.ADMIN_UIDS ?? "")
@@ -22,31 +22,11 @@ type SessionUser = {
 };
 type SessionLike = { user?: SessionUser | null } | null;
 type RouteContext = { params: Promise<{ id: string }> };
-type UserDoc = { lineUserId?: string | null };
 
 /* ===== Helpers ===== */
 function pickUid(session: SessionLike): string | null {
   const u = session?.user;
   return u?.id ?? u?.uid ?? u?.email ?? u?.name ?? null;
-}
-
-function toStringArray(v: unknown): string[] {
-  if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === "string");
-}
-
-function hasToDate(x: unknown): x is { toDate: () => Date } {
-  return typeof x === "object" && x !== null && "toDate" in (x as object);
-}
-function toDate(v: unknown): Date {
-  if (v instanceof Date) return v;
-  if (hasToDate(v)) return v.toDate();
-  if (typeof v === "string" || typeof v === "number") return new Date(v);
-  return new Date();
-}
-function normalizeLineTo(s?: string | null): string | null {
-  if (!s) return null;
-  return s.startsWith("line:") ? s.slice(5) : s;
 }
 
 async function assertAdmin(session: SessionLike): Promise<string | null> {
@@ -65,92 +45,15 @@ export async function PATCH(req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const db = getAdminDb();
-  const ref = db.collection("events").doc(id);
-
-  const promoted: string[] = [];
-  let title = "";
-  let whenLabel = "";
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const eventUrl = `${baseUrl}/events#${id}`;
-
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error("not found");
-    const data = snap.data() ?? {};
-
-    title = (data.title as string) ?? "";
-    const d = toDate(data.date);
-    const datePart = d.toLocaleDateString("ja-JP", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      weekday: "short",
-    });
-    whenLabel = data.time ? `${datePart} ${data.time as string}` : datePart;
-
-    const updates: Record<string, unknown> = {};
-
-    // capacity の更新
-    if (typeof body.capacity === "number" && body.capacity >= 0) {
-      const newCapacity = body.capacity;
-      const participants = toStringArray(data.participants);
-      const waitlist = toStringArray(data.waitlist);
-      const guestCount = Array.isArray(data.guests) ? data.guests.length : 0;
-
-      // 増枠: 待機リストから繰り上げ
-      const currentCount = participants.length + guestCount;
-      if (newCapacity > currentCount && waitlist.length > 0) {
-        const slotsToFill = newCapacity - currentCount;
-        const toPromote = waitlist.splice(0, slotsToFill);
-        participants.push(...toPromote);
-        promoted.push(...toPromote);
-        updates.participants = participants;
-        updates.waitlist = waitlist;
-      }
-
-      updates.capacity = newCapacity;
-    }
-
-    if (Object.keys(updates).length > 0) {
-      tx.update(ref, updates);
-    }
-  });
-
-  // 繰り上げ通知
-  for (const userId of promoted) {
-    await db
-      .collection("users")
-      .doc(userId)
-      .collection("notifications")
-      .add({
-        type: "promotion",
-        eventId: id,
-        title,
-        whenLabel,
-        whenText: whenLabel,
-        url: eventUrl,
-        read: false,
-        isRead: false,
-        createdAt: FieldValue.serverTimestamp(),
-      })
-      .catch((e) => console.error("notify(promotion/save) failed", e));
-
-    const uSnap = await db.collection("users").doc(userId).get();
-    const uData: UserDoc | undefined = uSnap.exists
-      ? (uSnap.data() as UserDoc)
-      : undefined;
-    const to = normalizeLineTo(uData?.lineUserId ?? userId);
-    if (to) {
-      await pushPromotedMessage({ to, title, whenLabel, eventUrl }).catch(
-        (e) => console.error("notify(promotion/push) failed", e)
-      );
-    }
+  const body = await req.json().catch(() => ({})) as { capacity?: unknown };
+  if (typeof body.capacity !== "number" || !Number.isInteger(body.capacity) || body.capacity < 0) {
+    return NextResponse.json({ error: "定員は0以上の整数にしてください" }, { status: 400 });
   }
-
-  return NextResponse.json({ ok: true, promoted: promoted.length });
+  const capacity = body.capacity;
+  const result = await updateEventAttendance(id, state => ({
+    promoted: promoteWaitlist(state, capacity), updates: { capacity },
+  }));
+  return NextResponse.json({ ok: true, promoted: result.promoted.length });
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext) {

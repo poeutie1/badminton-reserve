@@ -18,9 +18,9 @@ import EditCapacityButton from "@/app/events/_components/EditCapacityButton";
 import AddGuestButton from "@/app/events/_components/AddGuestButton";
 import RemoveGuestButton from "@/app/events/_components/RemoveGuestButton";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { isMemberId, readAttendance } from "@/lib/attendance";
+import type { GuestParticipant } from "@/lib/types";
 import type {
-  WriteResult,
   QueryDocumentSnapshot,
   DocumentSnapshot,
 } from "firebase-admin/firestore";
@@ -38,12 +38,7 @@ type UserProfile = {
   avatarUrl?: string | null;
 };
 
-type GuestInfo = {
-  id: string;
-  name: string;
-  gender?: string;
-  years?: number;
-};
+type GuestInfo = GuestParticipant;
 
 type EventRow = {
   id: string;
@@ -53,6 +48,7 @@ type EventRow = {
   participants: string[];
   waitlist: string[];
   guests: GuestInfo[];
+  guestWaitlist: GuestInfo[];
   location?: string;
   time?: string;
   joined: boolean;
@@ -64,36 +60,16 @@ type EventRow = {
     avatarUrl?: string | null;
   }>;
   waitlistProfiles: Array<{
+    guest?: boolean;
     id: string;
     name: string;
     avatarUrl?: string | null;
   }>;
 };
 
-type EventDoc = {
-  title?: string;
-  date?: unknown;
-  capacity?: number;
-  participants?: unknown[];
-  waitlist?: unknown[];
-  location?: string;
-  time?: string;
-};
-
 type ProfileDoc = UserProfile;
 
 /* ========= Utils ========= */
-function normalizeIds(arr: unknown[] | undefined): string[] {
-  const cleaned = (arr ?? [])
-    .filter((x): x is string => typeof x === "string")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .filter((s) => !/^dummy[-_ ]?user$/i.test(s))
-    .filter((s) => !/^dummy/i.test(s))
-    .filter((s) => /^[a-z]+:/.test(s));
-  return Array.from(new Set(cleaned));
-}
-
 const LabeledDivider = ({ label }: { label: string }) => (
   <div className="relative my-3">
     <div className="border-t border-gray-300 dark:border-gray-600" />
@@ -199,98 +175,28 @@ export default async function EventsPage({ params }: Props) {
     .orderBy("date")
     .get();
 
-  // --- 1) セルフヒーリング ---
-  const toFix: Promise<WriteResult>[] = [];
-  type BaseRow = {
-    id: string;
-    title: string;
-    date: Date;
-    capacity: number;
-    participants: string[];
-    waitlist: string[];
-    guests: GuestInfo[];
-    location?: string;
-    time?: string;
-    joined: boolean;
-    inWaitlist: boolean;
-    full: boolean;
-  };
-
-  const base: BaseRow[] = snap.docs.map((d: QueryDocumentSnapshot) => {
+  // 表示時は読み取りだけにする。ゲストを含む共通待機順を維持する。
+  const base = snap.docs.map((d: QueryDocumentSnapshot) => {
     const raw = d.data() as Record<string, unknown>;
-
-    const data: EventDoc = {
-      title: typeof raw.title === "string" ? raw.title : undefined,
-      date: raw.date,
-      capacity: typeof raw.capacity === "number" ? raw.capacity : undefined,
-      participants: Array.isArray(raw.participants)
-        ? (raw.participants as unknown[])
-        : [],
-      waitlist: Array.isArray(raw.waitlist) ? (raw.waitlist as unknown[]) : [],
-      location: typeof raw.location === "string" ? raw.location : undefined,
-      time: typeof raw.time === "string" ? raw.time : undefined,
-    };
-
-    const rawParticipants = Array.isArray(data.participants)
-      ? data.participants
-      : [];
-    const rawWaitlist = Array.isArray(data.waitlist) ? data.waitlist : [];
-
-    const p = normalizeIds(rawParticipants);
-    const w0 = normalizeIds(rawWaitlist);
-    const w = w0.filter((id) => !p.includes(id));
-
-    if (
-      p.length !== rawParticipants.length ||
-      w.length !== rawWaitlist.length
-    ) {
-      toFix.push(
-        d.ref.update({
-          participants: p,
-          waitlist: w,
-          normalizedAt: FieldValue.serverTimestamp(),
-        })
-      );
-    }
-
-    const date = toDate(data.date);
-    const capacity = typeof data.capacity === "number" ? data.capacity : 0;
-
-    // ゲスト情報を読み取り
-    const guests: GuestInfo[] = Array.isArray(raw.guests)
-      ? (raw.guests as Array<Record<string, unknown>>)
-          .filter((g) => typeof g?.id === "string" && typeof g?.name === "string")
-          .map((g) => ({
-            id: g.id as string,
-            name: g.name as string,
-            gender: typeof g.gender === "string" ? g.gender : undefined,
-            years: typeof g.years === "number" ? g.years : undefined,
-          }))
-      : [];
-
+    const attendance = readAttendance(raw);
+    const capacity = typeof raw.capacity === "number" ? raw.capacity : 0;
     return {
       id: d.id,
-      title: data.title ?? "",
-      date,
+      title: typeof raw.title === "string" ? raw.title : "",
+      date: toDate(raw.date),
       capacity,
-      participants: p,
-      waitlist: w,
-      guests,
-      location: data.location,
-      time: data.time,
-      joined:
-        Boolean(userId) &&
-        (p.includes(String(userId)) || w.includes(String(userId))),
-      inWaitlist: Boolean(userId) && w.includes(String(userId)),
-      full: (p.length + guests.length) >= capacity,
+      ...attendance,
+      location: typeof raw.location === "string" ? raw.location : undefined,
+      time: typeof raw.time === "string" ? raw.time : undefined,
+      joined: Boolean(userId) && (attendance.participants.includes(String(userId)) || attendance.waitlist.includes(String(userId))),
+      inWaitlist: Boolean(userId) && attendance.waitlist.includes(String(userId)),
+      full: attendance.participants.length + attendance.guests.length >= capacity,
     };
   });
-  // 非同期の修復は待たない
-  Promise.allSettled(toFix).catch(() => {});
 
   // --- 2) プロフィール解決（並列取得） ---
   const allIds = Array.from(
-    new Set(base.flatMap((e) => [...e.participants, ...e.waitlist]))
+    new Set(base.flatMap((e) => [...e.participants, ...e.waitlist.filter(isMemberId)]))
   );
 
   const profilesMap = new Map<string, ProfileDoc>();
@@ -316,9 +222,10 @@ export default async function EventsPage({ params }: Props) {
   const labelWithMeta = (
     name: string,
     gender?: Gender | null,
-    years?: number
+    years?: number,
+    guest = false
   ) => {
-    const tags: string[] = [];
+    const tags: string[] = guest ? ["ゲスト"] : [];
     if (gender && gender !== "未回答") tags.push(gender);
     if (typeof years === "number") tags.push(`${years}年`);
     return tags.length ? `${name}（${tags.join("・")}）` : name;
@@ -340,6 +247,10 @@ export default async function EventsPage({ params }: Props) {
       };
     }),
     waitlistProfiles: e.waitlist.map((id) => {
+      const guest = e.guestWaitlist.find(guest => guest.id === id);
+      if (guest) return {
+        id, guest: true, name: labelWithMeta(guest.name, guest.gender, guest.years, true), avatarUrl: null,
+      };
       const fromProfile = profilesMap.get(id);
       const fromUser = usersMap.get(id);
       const baseName =
@@ -397,7 +308,7 @@ export default async function EventsPage({ params }: Props) {
       <PromotionBanner notes={notes} />
 
       {visibleEvents.map((ev) => (
-        <div key={ev.id} className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow">
+        <div key={ev.id} id={ev.id} className="rounded-xl bg-white dark:bg-gray-800 p-4 shadow">
           <div className="font-semibold">{ev.title}</div>
           <div className="font-semibold">{fmtJstDate(ev.date)}</div>
 
@@ -442,23 +353,15 @@ export default async function EventsPage({ params }: Props) {
 
               {/* ゲスト参加者 */}
               {ev.guests.length > 0 && (
-                <div className="space-y-1">
+                <div className="flex flex-wrap gap-2">
                   {ev.guests.map((g) => {
-                    const tags: string[] = [];
-                    if (g.gender && g.gender !== "未回答") tags.push(g.gender);
-                    if (typeof g.years === "number") tags.push(`${g.years}年`);
-                    const label = tags.length
-                      ? `${g.name}（${tags.join("・")}）`
-                      : g.name;
+                    const label = labelWithMeta(g.name, g.gender, g.years, true);
                     return (
                       <div
                         key={g.id}
-                        className="flex items-center gap-1 text-sm"
+                        className="inline-flex items-center gap-2 rounded-full border px-2 py-1 text-sm"
                       >
-                        <span className="inline-block rounded bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 text-xs px-1">
-                          ゲスト
-                        </span>
-                        <span>{label}</span>
+                        <span className="whitespace-nowrap">{label}</span>
                         {isAdmin && (
                           <RemoveGuestButton
                             eventId={ev.id}

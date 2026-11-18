@@ -1,7 +1,8 @@
 // WaitlistLine も同様に（promote=false）:
 "use client";
 import AdminKickButton from "./AdminKickButton";
-type Person = { id: string; name: string; avatarUrl?: string | null };
+import RemoveGuestButton from "./RemoveGuestButton";
+type Person = { id: string; name: string; avatarUrl?: string | null; guest?: boolean };
 
 export default function WaitlistLine({
   people,
@@ -30,7 +31,10 @@ export default function WaitlistLine({
             {p.name}
             {me === p.id ? "（自分）" : ""}
           </span>
-          {adminEventId && (
+          {adminEventId && p.guest && (
+            <RemoveGuestButton eventId={adminEventId} guestId={p.id} guestName={p.name} waiting />
+          )}
+          {adminEventId && !p.guest && (
             <AdminKickButton
               eventId={adminEventId}
               targetUserId={p.id}
