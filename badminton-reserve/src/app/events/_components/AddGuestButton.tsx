@@ -8,9 +8,11 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
   const [gender, setGender] = useState<string>("");
   const [years, setYears] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const submit = async () => {
-    if (!name.trim()) return;
+    if (busy || !name.trim()) return;
+    setError("");
     setBusy(true);
     try {
       const body: Record<string, unknown> = { name: name.trim() };
@@ -25,7 +27,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? `追加失敗 (${res.status})`);
+        setError(typeof data.error === "string" ? data.error : `追加に失敗しました（${res.status}）`);
         return;
       }
       setName("");
@@ -33,6 +35,8 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
       setYears("");
       setOpen(false);
       location.reload();
+    } catch {
+      setError("通信に失敗しました。もう一度お試しください。");
     } finally {
       setBusy(false);
     }
@@ -42,7 +46,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setError(""); setOpen(true); }}
         className="text-sm text-blue-600 underline"
       >
         + ゲスト追加
@@ -53,6 +57,7 @@ export default function AddGuestButton({ eventId }: { eventId: string }) {
   return (
     <div className="mt-2 rounded border border-gray-200 bg-gray-50 dark:bg-gray-700 p-3 space-y-2">
       <div className="text-sm font-semibold">ゲスト追加</div>
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <input
         type="text"
         placeholder="名前（必須）"
